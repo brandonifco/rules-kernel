@@ -37,6 +37,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageProjectUrl>https://github.com/brandonifco/rules-kernel</PackageProjectUrl>
+    <PackageTags>rules-engine;determinism;replay;provenance</PackageTags>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
 </Project>

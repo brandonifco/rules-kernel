@@ -1,22 +1,31 @@
 name: publish
 
-# Publishes the three packages to GitHub Packages when a version tag is pushed.
+# Publishes the three packages to nuget.org.
+#
+# nuget.org rather than GitHub Packages, deliberately. GitHub Packages cannot serve NuGet
+# anonymously even for a public package, and a workflow's GITHUB_TOKEN is scoped to its own
+# repository -- so every engine built on this kernel would have needed a personal access
+# token as a repository secret just to restore it. A kernel whose entire purpose is being
+# referenced by many independent repositories must be restorable without a credential.
 #
 # The version comes from the tag, not from a file someone might forget to bump: a tag of
-# v0.1.0 publishes 0.1.0. Tagging is therefore the deliberate act, and an engine that says
-# it depends on RulesKernel 0.1.0 is naming something immutable.
+# v0.1.0 publishes 0.1.0. workflow_dispatch takes an explicit version instead, so a release
+# can be re-published without rewriting history.
 #
 # The gate runs first. A package that has not passed ./scripts/validate.sh full is not
-# publishable, because a broken kernel published once is referenced forever.
+# publishable, because a published version can be unlisted but never deleted.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish, without a leading v (e.g. 0.1.0)"
+        required: true
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   publish:
@@ -40,9 +49,19 @@ jobs:
           CI: "true"
         run: ./scripts/validate.sh full
 
-      - name: Resolve the version from the tag
+      - name: Resolve the version
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            value="${{ github.event.inputs.version }}"
+          else
+            value="${GITHUB_REF_NAME#v}"
+          fi
+          if [[ ! "$value" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$value' is not a semantic version"
+            exit 1
+          fi
+          echo "value=$value" >> "$GITHUB_OUTPUT"
 
       - name: Pack
         env:
@@ -51,9 +70,9 @@ jobs:
           dotnet pack RulesKernel.slnx -c Release --no-build \
             -p:Version="${{ steps.version.outputs.value }}" -o artifacts
 
-      - name: Push to GitHub Packages
+      - name: Push to nuget.org
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
-            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
-            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
             --skip-duplicate
