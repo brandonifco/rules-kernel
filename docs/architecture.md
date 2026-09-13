@@ -71,10 +71,17 @@ guesses at unimplemented rules is reproducibly wrong. `Resolution<T>` is how the
 is enforced in the type system rather than in prose.
 
 No ambient randomness, no ambient clock, no environment reads, no order-dependent
-iteration. `tools/repo-checks.py --only determinism` fails the build on `Random.Shared`,
-`new Random()`, `DateTime.UtcNow`, `Guid.NewGuid()`, `Task.Run`, `.AsParallel()` and their
-relatives anywhere under `src/`; `--only core-boundary` additionally forbids the kernel
-itself from touching the filesystem, a clock, the environment, the network, or randomness.
+iteration. The first three are checked: `tools/repo-checks.py --only determinism` fails the
+build on `Random.Shared`, `new Random()`, `DateTime.UtcNow`, `Guid.NewGuid()`, `Task.Run`,
+`.AsParallel()` and a list of their relatives, across every packable project; `--only
+core-boundary` additionally forbids the kernel itself from touching the filesystem, a clock,
+the environment, the network, or randomness.
+
+Order-dependent iteration is **not** mechanically checked, and saying otherwise would be the
+kind of claim this document exists to avoid. `--only ordering` catches sorting an ordered
+result after the fact, which is the failure mode that actually recurs. It does not catch
+enumerating a `Dictionary` or a `HashSet`, or anything else whose order is an implementation
+detail of the runtime. That one is a review obligation, not a gate.
 
 Ordered results are ordered **by construction** — the sequence in which things actually
 happened — never sorted afterwards. A sort applied to an ordered history destroys the

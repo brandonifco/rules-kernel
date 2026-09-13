@@ -3,8 +3,14 @@
 The ruleset-agnostic floor that deterministic rules engines are built on.
 
 Given the same ruleset version, the same pinned corpora, the same initial state and the
-same ordered decisions, an engine built on this kernel produces the same outcomes and the
-same ordered history — on any machine, on any run. And where it cannot resolve a rule, it
+same ordered decisions, an engine can produce the same outcomes and the same ordered
+history — on any machine, on any run. The kernel does not make that true of an engine; it
+owns no execution, no persistence and no mechanics. What it provides is the part an engine
+cannot safely invent for itself: identity you can compare, provenance you can check, a
+replay-stable generator, and a way to say "I cannot resolve this" that a caller must handle.
+Whether an engine honours the contract is the engine's business, and its own checks'.
+
+Where it cannot resolve a rule, an engine built on these primitives
 says so explicitly instead of guessing.
 
 The kernel is **referenced, not copied**. A correction made here reaches every engine built
@@ -92,17 +98,38 @@ can clone it can verify it.
 tools/repo-checks.py
 ```
 
-- **layering** — the declared `ProjectReference` graph, read from the csproj files. Exact,
-  and it fails on a project present on disk but absent from the declared graph.
+- **layering** — the declared dependency graph, read from every csproj in the repository at
+  any depth, in either quote style, counting a `PackageReference` to a sibling package as
+  the edge it is. A project on disk but absent from the declared graph is a failure.
 - **core-boundary** — `RulesKernel` touches no filesystem, clock, environment, network, or
   randomness. It resolves from its arguments alone.
-- **determinism** — no `Random.Shared`, `new Random()`, `DateTime.UtcNow`, `Guid.NewGuid()`,
-  `Task.Run` or `.AsParallel()` anywhere under `src/`.
-- **doc-references** — every repository document referenced from code or prose exists. A
-  citation is a promise.
-- **text-hygiene** — UTF-8, no BOM, LF, exactly one trailing newline.
+- **determinism** — no ambient entropy, clock, or concurrency in any *packable* project,
+  which includes `RulesKernel.Testing`. Test projects are deliberately out of scope: a test
+  may construct a clock in order to prove the kernel does not use one.
+- **ordering** — no sorting an ordered result after the fact. The order is the evidence.
+- **doc-references** — every repository file referenced from code or prose exists, including
+  `ADR NNNN` shorthand. A citation is a promise. It does not check that the citation is the
+  *right* document, only that it resolves.
+- **solution-membership** — every project is in `RulesKernel.slnx`. One deleted line would
+  otherwise drop a project from the build and the test run with no other symptom.
+- **action-pins** — every workflow `uses:` is a 40-character commit SHA.
+- **parseable** — every XML, YAML and JSON file parses. A malformed workflow is not an error
+  on GitHub; it simply never runs.
+- **text-hygiene** — UTF-8, no BOM, LF, one trailing newline, and no bidi controls,
+  zero-width characters, or non-ASCII identifiers.
 
-A check that examined nothing reports `skip`, never `ok`.
+A check that examined nothing reports `skip`, never `ok` — and a skip fails the run, because
+the exit code is the part the gate actually reads.
+
+What these do **not** prove: the determinism and boundary checks are pattern matches over
+source. Reflection, aliasing, extension methods and source generation defeat them. They
+raise the cost of an accident; they are not a proof of absence. The module docstring in
+`tools/repo-checks.py` says so too, and `tools/tests/` holds 105 tests that exist to show
+each check actually fails when it should.
+
+Public API changes to the three packaged assemblies are tracked separately, by
+`Microsoft.CodeAnalysis.PublicApiAnalyzers` — adding or reshaping a public member fails the
+build until the baseline is updated deliberately.
 
 ## Where this sits
 
