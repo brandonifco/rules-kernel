@@ -12,6 +12,12 @@ name: publish
 # v0.1.0 publishes 0.1.0. workflow_dispatch takes an explicit version instead, so a release
 # can be re-published without rewriting history.
 #
+# Authentication is NuGet Trusted Publishing: the workflow proves its identity to nuget.org
+# with a short-lived OIDC token minted by GitHub for this repository and this workflow file,
+# and exchanges it for an API key valid for minutes. There is no long-lived secret to store,
+# leak, or rotate -- and a stolen key is useless, because nuget.org will only accept one
+# issued to this exact repository and workflow.
+#
 # The gate runs first. A package that has not passed ./scripts/validate.sh full is not
 # publishable, because a published version can be unlisted but never deleted.
 
@@ -26,6 +32,9 @@ on:
 
 permissions:
   contents: read
+  # Required to mint the OIDC token Trusted Publishing exchanges for a short-lived API key.
+  # Without it the login step fails; it grants nothing else.
+  id-token: write
 
 jobs:
   publish:
@@ -70,9 +79,15 @@ jobs:
           dotnet pack RulesKernel.slnx -c Release --no-build \
             -p:Version="${{ steps.version.outputs.value }}" -o artifacts
 
+      - name: Exchange the OIDC token for a short-lived API key
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: brandonifco
+
       - name: Push to nuget.org
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --skip-duplicate
