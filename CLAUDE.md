@@ -66,6 +66,13 @@ Run the gate. There is one:
   `default(T)`, bypassing its constructor. Either validate at every gate that consumes it,
   or expose `IsValid` and reject it where it matters. Both patterns are in use here.
 
+## Packing locally
+
+Use `./scripts/pack-local.sh`. Never pack with the repository's own `VersionPrefix` and
+restore from the output folder: that writes a cache entry under a version number that may
+later be published, and every restore on the machine then serves the local bytes under the
+released version, silently. It has already happened once.
+
 ## Adding a project
 
 Create it, then declare it in `ALLOWED_PROJECT_REFS` and `PROJECT_DIRS` in
