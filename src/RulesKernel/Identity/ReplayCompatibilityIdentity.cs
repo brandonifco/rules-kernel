@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace RulesKernel.Identity;
@@ -38,7 +39,7 @@ namespace RulesKernel.Identity;
 /// </summary>
 public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibilityIdentity>
 {
-    private readonly SourceBaselineId[] _sourceBaselines;
+    private readonly ImmutableArray<SourceBaselineId> _sourceBaselines;
 
     /// <summary>The implemented ruleset revision in force.</summary>
     public RulesetVersion Ruleset { get; }
@@ -46,8 +47,19 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// <summary>The shape of the recorded replay.</summary>
     public ReplaySchemaVersion ReplaySchema { get; }
 
-    /// <summary>The pinned corpora, in declaration order. Never empty.</summary>
-    public IReadOnlyList<SourceBaselineId> SourceBaselines => _sourceBaselines;
+    /// <summary>
+    /// The pinned corpora, in declaration order. Never empty, and never two entries naming
+    /// the same corpus.
+    ///
+    /// <para>
+    /// <see cref="ImmutableArray{T}"/> rather than <see cref="IReadOnlyList{T}"/>: an
+    /// interface-typed array can be cast back to its concrete type and written through, and
+    /// this type's equality and hash code are computed from these entries. A caller who did
+    /// that could change an identity's hash while it sat in a dictionary -- in the one type
+    /// whose entire purpose is being a stable, comparable identity.
+    /// </para>
+    /// </summary>
+    public ImmutableArray<SourceBaselineId> SourceBaselines => _sourceBaselines;
 
     /// <summary>
     /// The pseudorandom algorithm this engine consumes, or <see langword="null"/> when it
@@ -105,9 +117,25 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
                 nameof(randomAlgorithm));
         }
 
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var baseline in baselines)
+        {
+            if (!seen.Add(baseline.SourceId))
+            {
+                // A SourceLocator names a corpus by SourceId alone. Two baselines sharing one
+                // id -- different hashes, or different dates -- would make every citation into
+                // that corpus ambiguous about which baseline it was checked against, which is
+                // the one thing provenance exists to prevent.
+                throw new ArgumentException(
+                    $"sourceBaselines contains more than one entry for corpus '{baseline.SourceId}'; "
+                    + "a locator names a corpus by id alone, so duplicate ids make citations ambiguous.",
+                    nameof(sourceBaselines));
+            }
+        }
+
         Ruleset = ruleset;
         ReplaySchema = replaySchema;
-        _sourceBaselines = baselines;
+        _sourceBaselines = [.. baselines];
         RandomAlgorithm = randomAlgorithm;
     }
 
@@ -130,7 +158,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
         return Ruleset == other.Ruleset
             && ReplaySchema == other.ReplaySchema
             && Nullable.Equals(RandomAlgorithm, other.RandomAlgorithm)
-            && _sourceBaselines.AsSpan().SequenceEqual(other._sourceBaselines);
+            && _sourceBaselines.AsSpan().SequenceEqual(other._sourceBaselines.AsSpan());
     }
 
     /// <inheritdoc/>

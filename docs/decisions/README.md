@@ -18,3 +18,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0003](0003-corpus-baselines-and-the-temporal-axis.md) | Corpus baselines are plural and carry a temporal axis |
 | [0004](0004-unresolved-results-and-the-totality-burden.md) | Unresolved results, and where the totality burden sits |
 | [0005](0005-pinned-pseudorandom-algorithm.md) | A pinned, reference-verified pseudorandom algorithm |
+| [0006](0006-bounded-draw-acceptance-limit-correction.md) | Correcting the bounded-draw acceptance limit |

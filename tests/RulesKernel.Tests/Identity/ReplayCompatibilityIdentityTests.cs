@@ -69,6 +69,39 @@ public sealed class ReplayCompatibilityIdentityTests
             () => new ReplayCompatibilityIdentity(Ruleset, Schema, [CoreBook], default(RandomAlgorithmId)));
     }
 
+    /// <summary>
+    /// The identity copies what it is given. Before this was true, the constructor stored
+    /// the caller's array and exposed it as IReadOnlyList -- which a caller could cast back
+    /// to SourceBaselineId[] and write through, changing the hash code of a value whose
+    /// entire purpose is to be a stable identity, potentially while it sat in a dictionary.
+    /// </summary>
+    [Fact]
+    public void Mutating_the_array_that_was_passed_in_cannot_change_the_identity()
+    {
+        var baselines = new[] { CoreBook };
+        var identity = new ReplayCompatibilityIdentity(Ruleset, Schema, baselines);
+        int hashBefore = identity.GetHashCode();
+
+        baselines[0] = Supplement;
+
+        Assert.Equal(hashBefore, identity.GetHashCode());
+        Assert.Equal(CoreBook, identity.SourceBaselines[0]);
+        Assert.Equal(Identity(), identity);
+    }
+
+    /// <summary>
+    /// A SourceLocator names a corpus by id alone, so two baselines sharing an id would make
+    /// every citation into that corpus ambiguous about which baseline it was checked against.
+    /// </summary>
+    [Fact]
+    public void Two_baselines_for_the_same_corpus_are_rejected()
+    {
+        var duplicate = new SourceBaselineId(CoreBook.SourceId, HashB);
+
+        var error = Assert.Throws<ArgumentException>(() => Identity([CoreBook, duplicate]));
+        Assert.Contains(CoreBook.SourceId, error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Is_not_equal_to_null_and_survives_reference_equality()
     {

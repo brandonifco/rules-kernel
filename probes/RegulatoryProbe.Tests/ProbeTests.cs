@@ -100,7 +100,7 @@ public sealed class ProbeTests
     {
         var baselines = Engine2019().Identity.SourceBaselines;
 
-        Assert.Equal(2, baselines.Count);
+        Assert.Equal(2, baselines.Length);
         Assert.Equal(DeferralLimitEngine.StatuteCorpus, baselines[0].SourceId);
         Assert.Equal(DeferralLimitEngine.AdjustmentCorpus, baselines[1].SourceId);
         Assert.All(baselines, b => Assert.NotNull(b.AsOf));

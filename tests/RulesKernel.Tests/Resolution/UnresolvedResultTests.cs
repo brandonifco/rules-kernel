@@ -22,6 +22,28 @@ public sealed class UnresolvedResultTests
             () => new UnresolvedResult(UnresolvedReason.UnsupportedRule, "compute the limit", default));
     }
 
+    /// <summary>
+    /// The vocabulary is closed by docs/decisions/0004, but a C# enum accepts any value of
+    /// its underlying type -- so "closed" is only true if something checks.
+    /// </summary>
+    [Fact]
+    public void An_undefined_reason_is_rejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new UnresolvedResult((UnresolvedReason)999, "compute the limit", Locator));
+    }
+
+    [Theory]
+    [InlineData(UnresolvedReason.UnsupportedRule)]
+    [InlineData(UnresolvedReason.RequiresInterpretation)]
+    [InlineData(UnresolvedReason.OutsideCurrentScope)]
+    [InlineData(UnresolvedReason.UnsupportedInteraction)]
+    [InlineData(UnresolvedReason.MissingRulesData)]
+    public void Every_declared_reason_is_accepted(UnresolvedReason reason)
+    {
+        Assert.Equal(reason, new UnresolvedResult(reason, "x", Locator).Reason);
+    }
+
     [Fact]
     public void Carries_all_three_facts_a_caller_needs()
     {

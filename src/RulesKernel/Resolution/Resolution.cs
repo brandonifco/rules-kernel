@@ -32,13 +32,31 @@ public abstract record Resolution<T>
     /// <summary>True when this is a <see cref="Resolved"/> outcome.</summary>
     public bool IsResolved => this is Resolved;
 
-    /// <summary>A resolved outcome carrying the engine's answer.</summary>
-    /// <param name="Value">The answer.</param>
-    public sealed record Resolved(T Value) : Resolution<T>;
+    /// <summary>
+    /// A resolved outcome carrying the engine's answer. Constructed through
+    /// <see cref="FromValue"/>; the case is public so callers can match on it.
+    /// </summary>
+    public sealed record Resolved : Resolution<T>
+    {
+        internal Resolved(T value) => Value = value;
 
-    /// <summary>An outcome the engine could not resolve, and why.</summary>
-    /// <param name="Result">The reason, what was attempted, and where the rule lives.</param>
-    public sealed record Unresolved(UnresolvedResult Result) : Resolution<T>;
+        /// <summary>The answer.</summary>
+        public T Value { get; }
+    }
+
+    /// <summary>
+    /// An outcome the engine could not resolve, and why. Constructed through
+    /// <see cref="FromUnresolved"/> -- which is what guarantees <see cref="Result"/> is never
+    /// null. A public constructor here would be an unguarded second way in, and callers would
+    /// find it.
+    /// </summary>
+    public sealed record Unresolved : Resolution<T>
+    {
+        internal Unresolved(UnresolvedResult result) => Result = result;
+
+        /// <summary>The reason, what was attempted, and where the rule lives.</summary>
+        public UnresolvedResult Result { get; }
+    }
 
     /// <summary>Wraps a resolved value.</summary>
     public static Resolution<T> FromValue(T value) => new Resolved(value);

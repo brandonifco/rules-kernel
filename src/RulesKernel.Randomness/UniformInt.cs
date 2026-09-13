@@ -55,16 +55,26 @@ public static class UniformInt
         ArgumentNullException.ThrowIfNull(source);
         ArgumentOutOfRangeException.ThrowIfZero(exclusiveBound);
 
-        // The largest multiple of exclusiveBound that fits in a uint. 2^32 does not itself
-        // fit, so this is computed against uint.MaxValue (2^32 - 1) instead: since 2^32 is
-        // not a multiple of any bound above 1, the largest multiple not exceeding
-        // uint.MaxValue is the same as the largest multiple below 2^32. Raw draws at or
-        // above this limit are rejected and redrawn.
+        // The largest multiple of exclusiveBound not exceeding 2^32, the true size of the
+        // draw space. Raw values at or above it are rejected and redrawn.
         //
-        // The comparison below must be >=, not >, and the subtraction must be of the
-        // remainder, not of exclusiveBound itself. Either slip reintroduces exactly the
-        // bias this method exists to remove, while looking correct in every ordinary run.
-        uint acceptanceLimit = uint.MaxValue - (uint.MaxValue % exclusiveBound);
+        // Computed in ulong on purpose. An earlier version worked against uint.MaxValue
+        // (2^32 - 1) and justified it with the claim that 2^32 is not a multiple of any
+        // bound above 1. That claim is false -- every power of two divides 2^32 -- and the
+        // cost was real: at a bound of 2^31 the whole draw space maps perfectly with no
+        // rejection at all, yet that formula rejected half of every draw. The output stayed
+        // uniform, so no distribution was ever wrong; what was wrong was the number of draws
+        // consumed, and draw count is part of the replay contract (docs/decisions/0006).
+        //
+        // The limit reaches 2^32 exactly when exclusiveBound divides it, and 2^32 does not
+        // fit in a uint -- which is precisely why this is not narrowed back down. No uint can
+        // then equal or exceed the limit, so nothing is rejected, which is the correct answer.
+        //
+        // The comparison must be >=, not >, and the subtraction must be of the remainder,
+        // not of exclusiveBound itself. Either slip reintroduces exactly the bias this
+        // method exists to remove, while looking correct in every ordinary run.
+        const ulong DrawSpace = 1UL << 32;
+        ulong acceptanceLimit = DrawSpace - (DrawSpace % exclusiveBound);
 
         uint raw;
         do

@@ -103,7 +103,16 @@ ALLOW_MARKER = "kernel:allow-nondeterminism"
 
 # Documents referenced from code, comments, or prose. A reference to a file that does not
 # exist is how a predecessor shipped 61 dangling pointers inside runtime error messages.
-DOC_REFERENCE = re.compile(r"\b(?:docs/[A-Za-z0-9_./-]+\.md|CLAUDE\.md|AGENTS\.md|README\.md)\b")
+# Any repository file cited from code or prose, not only documents. The first version of
+# this check matched docs/*.md and the three root documents, and nothing else -- so when
+# Pcg32ReferenceVectors.cs cited tools/pcg-vectors/generate.sh, a file that had not been
+# brought across from the donor repository, the check that exists to make a citation a
+# promise reported ok. The blind spot was in the enforcement, not in the enforced code,
+# which is the worse of the two places for one to be.
+DOC_REFERENCE = re.compile(
+    r"\b(?:docs|tools|scripts|probes|src|tests)/[A-Za-z0-9_./-]+"
+    r"\.(?:md|py|sh|c|cs|json|ya?ml|csproj|props|targets|slnx)\b"
+    r"|\bCLAUDE\.md\b|\bAGENTS\.md\b|\bREADME\.md\b")
 DOC_DECISION_SHORTHAND = re.compile(r"\bdocs/decisions/(\d{4})\b")
 
 

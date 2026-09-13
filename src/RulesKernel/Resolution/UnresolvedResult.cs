@@ -38,6 +38,18 @@ public sealed record UnresolvedResult
     /// </exception>
     public UnresolvedResult(UnresolvedReason reason, string attempted, SourceLocator locator)
     {
+        if (!Enum.IsDefined(reason))
+        {
+            // The vocabulary is closed by decision (docs/decisions/0004). A C# enum accepts
+            // any value of its underlying type, so "closed" is only true if something checks
+            // -- otherwise (UnresolvedReason)999 travels as a reason nobody can interpret.
+            throw new ArgumentOutOfRangeException(
+                nameof(reason),
+                reason,
+                "reason is not one of the closed UnresolvedReason values; adding a sixth means "
+                + "superseding docs/decisions/0004, not casting an undefined value.");
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(attempted);
 
         if (!locator.IsValid)

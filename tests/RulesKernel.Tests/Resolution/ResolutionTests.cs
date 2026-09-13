@@ -51,6 +51,20 @@ public sealed class ResolutionTests
         Assert.Equal(Resolution<int>.FromUnresolved(Gap()), Resolution<int>.FromUnresolved(Gap()));
     }
 
+    /// <summary>
+    /// The factories are the only way in. While the nested cases had public constructors,
+    /// new Resolution&lt;int&gt;.Unresolved(null!) bypassed the null check FromUnresolved
+    /// performs -- an unguarded second door that callers would eventually find.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(Resolution<int>.Resolved))]
+    [InlineData(typeof(Resolution<int>.Unresolved))]
+    public void The_cases_cannot_be_constructed_from_outside_the_assembly(Type caseType)
+    {
+        Assert.Empty(caseType.GetConstructors(System.Reflection.BindingFlags.Public
+                                              | System.Reflection.BindingFlags.Instance));
+    }
+
     [Fact]
     public void FromUnresolved_rejects_a_null_result()
     {

@@ -70,13 +70,79 @@ public sealed class UniformIntTests
         Assert.Throws<InvalidOperationException>(() => UniformInt.Below(source, 6));
     }
 
-    [Fact]
-    public void Below_is_exactly_uniform_over_the_whole_uint_range()
+    /// <summary>
+    /// The expectation is derived from the definition of the acceptance limit, never from
+    /// the expression the implementation uses. The defect docs/decisions/0006 corrects
+    /// survived because the tests recomputed the implementation's own formula, which can
+    /// only ever confirm that the code does what it does.
+    /// </summary>
+    private static ulong AcceptanceLimit(uint bound)
     {
-        // Every raw value below the acceptance limit maps onto exactly one of six outcomes,
-        // and the limit is a multiple of six -- so the mapping cannot favour any face.
-        const uint AcceptanceLimit = uint.MaxValue - (uint.MaxValue % 6);
-        Assert.Equal(0u, AcceptanceLimit % 6);
+        const ulong DrawSpace = 1UL << 32;
+        return DrawSpace - (DrawSpace % bound);
+    }
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(6u)]
+    [InlineData(20u)]
+    [InlineData(1u << 16)]
+    [InlineData(1u << 31)]
+    [InlineData(uint.MaxValue)]
+    public void The_highest_acceptable_raw_value_is_accepted_in_a_single_draw(uint bound)
+    {
+        uint highestAccepted = (uint)(AcceptanceLimit(bound) - 1);
+        var source = new FixedSequenceRandomSource([highestAccepted]);
+
+        Assert.Equal(highestAccepted % bound, UniformInt.Below(source, bound));
+        Assert.Equal(1, source.Consumed);
+    }
+
+    /// <summary>
+    /// A bound that divides 2^32 maps the entire draw space perfectly, so nothing can be
+    /// rejected. The superseded formula rejected half of every draw at 2^31 and one value
+    /// in every 2^32 at a bound of 1 -- uniform output, wrong draw count.
+    /// </summary>
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(1u << 16)]
+    [InlineData(1u << 31)]
+    public void A_bound_dividing_the_draw_space_never_rejects_anything(uint bound)
+    {
+        Assert.Equal(1UL << 32, AcceptanceLimit(bound));
+
+        var source = new FixedSequenceRandomSource([uint.MaxValue]);
+
+        Assert.Equal(uint.MaxValue % bound, UniformInt.Below(source, bound));
+        Assert.Equal(1, source.Consumed);
+    }
+
+    [Theory]
+    [InlineData(6u)]
+    [InlineData(20u)]
+    [InlineData(uint.MaxValue)]
+    public void The_lowest_unacceptable_raw_value_is_rejected_and_redrawn(uint bound)
+    {
+        ulong limit = AcceptanceLimit(bound);
+        Assert.True(limit < (1UL << 32), "this case only applies to a bound that leaves a remainder");
+
+        var source = new FixedSequenceRandomSource([(uint)limit, 0u]);
+
+        Assert.Equal(0u, UniformInt.Below(source, bound));
+        Assert.Equal(2, source.Consumed);
+    }
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(6u)]
+    [InlineData(1u << 31)]
+    [InlineData(uint.MaxValue)]
+    public void Every_outcome_receives_the_same_number_of_raw_values(uint bound)
+    {
+        Assert.Equal(0UL, AcceptanceLimit(bound) % bound);
     }
 
     [Fact]
