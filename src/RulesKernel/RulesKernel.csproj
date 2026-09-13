@@ -10,4 +10,13 @@
     <Description>Ruleset-agnostic determinism primitives: replay identity, provenance, and the unresolved-result contract.</Description>
   </PropertyGroup>
 
+  <!-- This assembly ships to nuget.org and is referenced, not copied (see Directory.Build.props):
+       a shape change here breaks every engine built on it without a recompile telling them so.
+       PublicApiAnalyzers turns an undeclared change to this surface into a build error against
+       PublicAPI.Shipped.txt / PublicAPI.Unshipped.txt, so it can only pass alongside a deliberate
+       decision record per CLAUDE.md principle 5. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
 </Project>

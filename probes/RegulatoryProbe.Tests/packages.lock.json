@@ -95,12 +95,6 @@
       },
       "ruleskernel": {
         "type": "Project"
-      },
-      "ruleskernel.randomness": {
-        "type": "Project",
-        "dependencies": {
-          "RulesKernel": "[0.1.0, )"
-        }
       }
     }
   }

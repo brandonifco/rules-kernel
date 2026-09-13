@@ -1,0 +1,6 @@
+RulesKernel.Testing.AssemblyMarker
+RulesKernel.Testing.FixedSequenceRandomSource
+RulesKernel.Testing.FixedSequenceRandomSource.Consumed.get -> int
+RulesKernel.Testing.FixedSequenceRandomSource.FixedSequenceRandomSource(System.Collections.Generic.IEnumerable<uint>! values) -> void
+RulesKernel.Testing.FixedSequenceRandomSource.NextUInt32() -> uint
+static RulesKernel.Testing.AssemblyMarker.Assembly.get -> System.Reflection.Assembly!

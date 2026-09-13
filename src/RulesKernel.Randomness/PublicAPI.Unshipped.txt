@@ -1,0 +1,23 @@
+override RulesKernel.Randomness.Pcg32State.GetHashCode() -> int
+RulesKernel.Randomness.AssemblyMarker
+RulesKernel.Randomness.IRandomSource
+RulesKernel.Randomness.IRandomSource.NextUInt32() -> uint
+RulesKernel.Randomness.Pcg32
+RulesKernel.Randomness.Pcg32.GetState() -> RulesKernel.Randomness.Pcg32State
+RulesKernel.Randomness.Pcg32.NextUInt32() -> uint
+RulesKernel.Randomness.Pcg32State
+RulesKernel.Randomness.Pcg32State.Equals(RulesKernel.Randomness.Pcg32State other) -> bool
+RulesKernel.Randomness.Pcg32State.Increment.get -> ulong
+RulesKernel.Randomness.Pcg32State.Pcg32State() -> void
+RulesKernel.Randomness.Pcg32State.Pcg32State(ulong state, ulong increment) -> void
+RulesKernel.Randomness.Pcg32State.State.get -> ulong
+RulesKernel.Randomness.UniformInt
+static RulesKernel.Randomness.AssemblyMarker.Assembly.get -> System.Reflection.Assembly!
+static RulesKernel.Randomness.Pcg32.FromSeed(ulong seed, ulong stream) -> RulesKernel.Randomness.Pcg32!
+static RulesKernel.Randomness.Pcg32.FromState(RulesKernel.Randomness.Pcg32State state) -> RulesKernel.Randomness.Pcg32!
+static RulesKernel.Randomness.Pcg32State.operator !=(RulesKernel.Randomness.Pcg32State left, RulesKernel.Randomness.Pcg32State right) -> bool
+static RulesKernel.Randomness.Pcg32State.operator ==(RulesKernel.Randomness.Pcg32State left, RulesKernel.Randomness.Pcg32State right) -> bool
+static RulesKernel.Randomness.UniformInt.Below(RulesKernel.Randomness.IRandomSource! source, uint exclusiveBound) -> uint
+static RulesKernel.Randomness.UniformInt.InRange(RulesKernel.Randomness.IRandomSource! source, int minInclusive, int maxInclusive) -> int
+~override RulesKernel.Randomness.Pcg32State.Equals(object obj) -> bool
+~override RulesKernel.Randomness.Pcg32State.ToString() -> string
