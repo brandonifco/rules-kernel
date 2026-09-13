@@ -50,33 +50,35 @@ skipped() { printf '%sskip%s %s (depends on a step that failed)\n' "$YEL" "$OFF"
 #
 # The fix asks two independent questions of the actual test-run output (a TRX file per
 # project, requested below), not of the exit code:
-#   1. did every project this solution DECLARES as a test project (<IsTestProject>true</
-#      IsTestProject> in its own .csproj) produce a result file? A project that silently
-#      dropped out of $SOLUTION produces none, and is caught even though the rest passed.
+#   1. did every test project ON DISK (<IsTestProject>true</IsTestProject> in its own
+#      .csproj, found by walking the repository) produce a result file? Deriving that
+#      expectation from the repository rather than from $SOLUTION is the whole point: a
+#      project dropped from the solution also drops out of a count taken FROM the solution,
+#      so the expectation falls in step with the actual and the assertion can never fail.
+#      Verified -- against a solution-derived expectation, deleting a project line from the
+#      slnx still reported PASS.
 #   2. did the sum of tests those files record come to more than zero? A solution that
 #      declares no test projects at all -- or a result wipeout -- is caught even though
 #      (1) is vacuously satisfied.
 # Neither question is answerable from "dotnet test exited 0", which is the entire point.
 expected_test_projects() {
-  python3 - "$SOLUTION" <<'PY'
-import re, sys, pathlib
+  python3 - "$REPO_ROOT" <<'PYEXPECT'
+import pathlib
+import re
+import sys
 
-sln_path = pathlib.Path(sys.argv[1])
-sln_dir = sln_path.parent
-project_paths = re.findall(r'Project Path="([^"]+)"', sln_path.read_text(encoding="utf-8"))
+root = pathlib.Path(sys.argv[1])
+IGNORED = {"bin", "obj", ".git", ".dotnet", ".venv", "artifacts", "TestResults", "worktrees"}
 
 count = 0
-for rel in project_paths:
-    csproj = sln_dir / rel
-    if not csproj.exists():
-        # A dangling <Project> entry is tools/repo-checks.py's job (doc-references-style
-        # check), not this one's. We only count projects we can actually inspect.
+for csproj in sorted(root.rglob("*.csproj")):
+    if any(part in IGNORED for part in csproj.parts):
         continue
-    text = csproj.read_text(encoding="utf-8")
+    text = csproj.read_text(encoding="utf-8", errors="replace")
     if re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.IGNORECASE):
         count += 1
 print(count)
-PY
+PYEXPECT
 }
 
 assert_tests_ran() {
