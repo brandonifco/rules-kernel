@@ -68,6 +68,14 @@ jobs:
           # credential sitting in .git/config.
           persist-credentials: false
 
+      # tools/repo-checks.py's `parseable` check verifies every YAML file actually parses.
+      # A malformed workflow is not an error on GitHub -- the workflow simply does not run --
+      # so this is the check that notices CI silently ceasing to exist. It reports a file as
+      # NOT VERIFIED rather than ok when PyYAML is missing, which is the honest answer and a
+      # failure, so the runner must actually have it.
+      - name: Ensure PyYAML is available to the repository checks
+        run: python3 -m pip install --quiet --disable-pip-version-check pyyaml
+
       - name: Read the pinned SDK version
         id: sdk
         run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"

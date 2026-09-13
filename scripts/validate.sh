@@ -209,6 +209,30 @@ fi
 step "Repository invariants"
 run "repo-checks" tools/repo-checks.py || true
 
+# The checks are code, and until now nothing tested them. Two of them shipped with holes
+# that a single negative fixture would have caught. This step is what makes the enforcement
+# layer subject to the same standard it imposes on everything else.
+#
+# `unittest` exits 0 when tests SKIP, so a skipped suite is indistinguishable from a passing
+# one by exit code alone -- and these tests are the only evidence the guards bite. A skip
+# here is a failure, not a note.
+#
+# `|| tooling_status=$?` is load-bearing: under `set -e` a bare `var=$(failing-command)`
+# ends the shell immediately, which would skip the FAIL line, the output, and the verdict
+# banner -- in a gate whose whole job is producing evidence someone can paste into a PR.
+step "Tooling tests"
+tooling_status=0
+tooling_output="$(python3 -m unittest discover -s tools/tests 2>&1)" || tooling_status=$?
+if [[ "$tooling_status" -ne 0 ]]; then
+  printf '%s\n' "$tooling_output" | tail -20
+  fail "python tooling tests"
+elif printf '%s' "$tooling_output" | grep -q "skipped="; then
+  printf '%s\n' "$tooling_output" | tail -3
+  fail "python tooling tests skipped some cases -- the gate must prove all of them"
+else
+  printf '%sok%s   %s\n' "$GREEN" "$OFF" "$(printf '%s' "$tooling_output" | grep -E '^Ran ' || echo 'python tooling tests')"
+fi
+
 # This step's name says what it actually checks, which is narrower than "Whitespace" implied.
 # `git diff --check` only flags whitespace errors (trailing blanks, mixed tabs) in the
 # working tree relative to the index/HEAD. After `actions/checkout` the tree is clean, so
