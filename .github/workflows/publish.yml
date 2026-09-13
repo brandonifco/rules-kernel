@@ -8,9 +8,17 @@ name: publish
 # token as a repository secret just to restore it. A kernel whose entire purpose is being
 # referenced by many independent repositories must be restorable without a credential.
 #
-# The version comes from the tag, not from a file someone might forget to bump: a tag of
-# v0.1.0 publishes 0.1.0. workflow_dispatch takes an explicit version instead, so a release
-# can be re-published without rewriting history.
+# The version comes from the pushed tag, and the tag must agree with VersionPrefix in
+# Directory.Build.props (checked below) before anything is packed. Earlier this workflow
+# packed with `-p:Version=<tag>` on top of a build whose assembly already had a different
+# version baked in from Directory.Build.props -- so pack RELABELLED the package without
+# rebuilding, and a package stamped e.g. 0.3.0 could ship an assembly whose
+# AssemblyInformationalVersion said 0.2.0. For a library whose product is replay identity,
+# a package that disagrees with its own assembly about its version is a provenance defect,
+# not a cosmetic one. The fix: the tag is the review gate (VersionPrefix is a normal,
+# reviewed source change; pushing a tag that doesn't match it is a mistake, not a release),
+# and nothing overrides the version at pack time -- the package and the assembly can only
+# ever agree, because they come from the same build.
 #
 # Authentication is NuGet Trusted Publishing: the workflow proves its identity to nuget.org
 # with a short-lived OIDC token minted by GitHub for this repository and this workflow file,
@@ -18,31 +26,47 @@ name: publish
 # leak, or rotate -- and a stolen key is useless, because nuget.org will only accept one
 # issued to this exact repository and workflow.
 #
-# The gate runs first. A package that has not passed ./scripts/validate.sh full is not
-# publishable, because a published version can be unlisted but never deleted.
+# The gate runs first, in its own job, and `id-token: write` is granted only to the job
+# that comes after it. That job re-checks out the ref and rebuilds Release from scratch
+# (see the `publish` job below) rather than reusing anything from `validate`: the two jobs
+# run on different runners with no shared filesystem, and rebuilding is also what lets
+# `publish` be a small, auditable sequence (restore, build, pack, login, push) rather than
+# the full gate -- which runs arbitrary repo-controlled Python and executes this
+# repository's own test assemblies -- while a live OIDC-minting credential is sitting in
+# the job's permissions. A published version can be unlisted but never deleted, so the gate
+# still has to pass before any of this runs; it just does not need to run *holding
+# id-token: write* to do that.
 
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish, without a leading v (e.g. 0.1.0)"
-        required: true
+  # A manual re-run exists for retrying a publish that failed after the gate already
+  # passed (e.g. a transient OIDC/nuget.org failure) -- it does not accept an arbitrary
+  # version. It must be launched with a tag selected as the ref (GitHub's workflow_dispatch
+  # ref-picker allows a branch too; the "tag must match VersionPrefix" step below fails
+  # loudly, before anything is built or packed, if a branch or a non-matching tag was
+  # picked instead). This is the constraint the previous free-text `version` input did not
+  # have: that input let the workflow publish any version string, from any ref, including a
+  # branch whose HEAD had nothing to do with that version.
+  workflow_dispatch: {}
 
 permissions:
   contents: read
-  # Required to mint the OIDC token Trusted Publishing exchanges for a short-lived API key.
-  # Without it the login step fails; it grants nothing else.
-  id-token: write
 
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # See build-and-test.yml for why: validate.sh full runs repo-controlled shell,
+          # Python and MSBuild/test code, which has no legitimate reason to find a
+          # credential sitting in .git/config.
+          persist-credentials: false
 
       - name: Read the pinned SDK version
         id: sdk
@@ -58,26 +82,84 @@ jobs:
           CI: "true"
         run: ./scripts/validate.sh full
 
-      - name: Resolve the version
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Required to mint the OIDC token Trusted Publishing exchanges for a short-lived API
+      # key. Scoped to this job only -- the `validate` job above, which is where arbitrary
+      # repo-controlled code actually runs, never has it.
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require a tag, and require it to match VersionPrefix
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            value="${{ github.event.inputs.version }}"
-          else
-            value="${GITHUB_REF_NAME#v}"
-          fi
-          if [[ ! "$value" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::'$value' is not a semantic version"
+          if [[ "${{ github.ref_type }}" != "tag" ]]; then
+            echo "::error::publish must run from a tag (refs/tags/vX.Y.Z), not '${{ github.ref }}' (ref_type=${{ github.ref_type }}). If this was a manual run, re-run workflow_dispatch with that tag selected as the ref."
             exit 1
           fi
-          echo "value=$value" >> "$GITHUB_OUTPUT"
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$GITHUB_REF_NAME' is not of the form vX.Y.Z"
+            exit 1
+          fi
+
+          props_version="$(python3 -c '
+          import re, sys
+          text = open("Directory.Build.props", encoding="utf-8").read()
+          m = re.search(r"<VersionPrefix>([^<]+)</VersionPrefix>", text)
+          if not m:
+              print("no <VersionPrefix> found in Directory.Build.props", file=sys.stderr)
+              sys.exit(1)
+          print(m.group(1))
+          ')"
+
+          if [[ "$tag_version" != "$props_version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match VersionPrefix $props_version in Directory.Build.props. The package and the assembly must agree by construction: bump VersionPrefix in a reviewed commit on main, then tag that commit v$props_version and push the tag."
+            exit 1
+          fi
+
+          echo "value=$tag_version" >> "$GITHUB_OUTPUT"
+
+      - name: Read the pinned SDK version
+        id: sdk
+        run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.sdk.outputs.version }}
+
+      # This job runs on a fresh checkout with no shared filesystem from `validate`'s
+      # runner, so the Release build that gets packed has to happen here. It is built the
+      # same way validate.sh's Release pass builds it -- CI=true, so
+      # ContinuousIntegrationBuild applies the same source-path normalisation to the
+      # binaries that ship as it did to the binaries validate.sh just tested. Restoring
+      # with --locked-mode keeps this build using exactly the resolved graph validate.sh
+      # already verified, not a fresh resolution.
+      - name: Restore (locked)
+        run: dotnet restore RulesKernel.slnx --locked-mode
+
+      - name: Build Release (CI=true, same as validate.sh's shipping pass)
+        env:
+          CI: "true"
+        run: dotnet build RulesKernel.slnx -c Release --no-restore -warnaserror
 
       - name: Pack
         env:
           CI: "true"
-        run: |
-          dotnet pack RulesKernel.slnx -c Release --no-build \
-            -p:Version="${{ steps.version.outputs.value }}" -o artifacts
+        # No -p:Version override: VersionPrefix in Directory.Build.props already equals
+        # the tag (enforced above), so the package version comes from the same build that
+        # produced the assembly, and the two cannot disagree.
+        run: dotnet pack RulesKernel.slnx -c Release --no-build -o artifacts
 
       - name: Exchange the OIDC token for a short-lived API key
         id: login

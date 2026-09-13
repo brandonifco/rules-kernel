@@ -27,6 +27,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # validate.sh full then runs repo-controlled shell, Python (tools/repo-checks.py)
+          # and MSBuild targets/test code from this checkout. None of that needs to push,
+          # tag, or otherwise write to the remote, so there is no reason for a credential
+          # capable of doing so to sit in .git/config while it runs. This does not shrink
+          # `permissions: contents: read` above -- it removes the *token material itself*
+          # from the working tree, which matters against repo-controlled code specifically,
+          # not against the GitHub API.
+          persist-credentials: false
 
       - name: Read the pinned SDK version
         id: sdk
