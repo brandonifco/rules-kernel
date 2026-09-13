@@ -7,7 +7,7 @@ not trust it.
 ## Why this is not a normal test fixture
 
 the kernel's replay contract is the PCG32 sequence itself. A wrong vector does not fail —
-it passes, forever, pinning a bug as if it were the specification. ADR 0002 therefore
+it passes, forever, pinning a bug as if it were the specification. docs/decisions/0005 therefore
 requires the vectors to come from the published reference implementation, obtained by
 running it. Vectors nobody checked are worse than none, because they look like evidence.
 
@@ -61,5 +61,5 @@ produced, without running anything at all.
 ## Changing the vectors
 
 Don't, except to add rows. Changing an existing value changes what every stored seed in
-the project means. ADR 0002 calls that a replay-compatibility event: it needs its own ADR
+the project means. docs/decisions/0005 calls that a replay-compatibility event: it needs its own decision record
 and its own Issue, not a regenerated fixture in an unrelated PR.

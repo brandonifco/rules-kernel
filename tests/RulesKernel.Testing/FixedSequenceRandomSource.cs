@@ -39,7 +39,7 @@ public sealed class FixedSequenceRandomSource : IRandomSource
 
     /// <summary>
     /// How many values have been drawn so far. Exposed because the number of draws a
-    /// mechanic makes is part of its observable contract under ADR 0002 -- a test needs
+    /// mechanic makes is part of its observable contract under docs/decisions/0005 -- a test needs
     /// to be able to assert on it, not just on the values themselves.
     /// </summary>
     public int Consumed => _consumed;
