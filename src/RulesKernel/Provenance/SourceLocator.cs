@@ -43,8 +43,39 @@ public readonly record struct SourceLocator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
         ArgumentException.ThrowIfNullOrWhiteSpace(citation);
+        ThrowIfNotACanonicalSourceId(sourceId, nameof(sourceId));
+
         SourceId = sourceId;
         Citation = citation;
+    }
+
+
+    /// <summary>
+    /// Corpus identifiers are compared with ordinal, case-sensitive equality wherever they
+    /// are compared at all -- by <c>SourceBaselineId</c>'s own equality, by the duplicate
+    /// check in <see cref="Identity.ReplayCompatibilityIdentity"/>, and by any consumer
+    /// matching a locator back to the baseline it cites.
+    ///
+    /// <para>
+    /// That contract is stated rather than softened. Case-folding would be a guess about
+    /// whether a corpus scheme is case-sensitive, and this type has no basis for guessing.
+    /// Surrounding whitespace is different: <c>"core "</c> is never a deliberate identifier,
+    /// only a typo, and one that would make two baselines for the same corpus compare
+    /// unequal -- silently defeating the duplicate check whose whole rationale is that an id
+    /// identifies a corpus. So whitespace is rejected and case is left alone.
+    /// </para>
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="sourceId"/> has leading or trailing whitespace.</exception>
+    internal static void ThrowIfNotACanonicalSourceId(string sourceId, string parameterName)
+    {
+        if (sourceId.Length != sourceId.Trim().Length)
+        {
+            throw new ArgumentException(
+                $"sourceId '{sourceId}' has leading or trailing whitespace. Identifiers are "
+                + "compared ordinally, so a stray space makes two references to the same corpus "
+                + "compare unequal.",
+                parameterName);
+        }
     }
 
     /// <summary>False for <c>default(SourceLocator)</c>, which bypasses the constructor.</summary>

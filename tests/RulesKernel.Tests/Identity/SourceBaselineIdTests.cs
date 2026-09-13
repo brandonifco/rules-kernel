@@ -1,5 +1,6 @@
 using System;
 using RulesKernel.Identity;
+using RulesKernel.Provenance;
 
 namespace RulesKernel.Tests.Identity;
 
@@ -40,6 +41,29 @@ public sealed class SourceBaselineIdTests
         Assert.NotEqual(
             new SourceBaselineId("core", Hash),
             new SourceBaselineId("core", Hash, new DateOnly(2024, 1, 1)));
+    }
+
+    /// <summary>
+    /// A stray space makes two references to the same corpus compare unequal, which would
+    /// silently defeat the duplicate-baseline check whose entire rationale is that an id
+    /// identifies a corpus. Case is deliberately left alone -- see the guard's own doc.
+    /// </summary>
+    [Theory]
+    [InlineData("core ")]
+    [InlineData(" core")]
+    [InlineData("core\t")]
+    public void A_source_id_padded_with_whitespace_is_rejected(string padded)
+    {
+        Assert.Throws<ArgumentException>(() => new SourceBaselineId(padded, Hash));
+        Assert.Throws<ArgumentException>(() => new SourceLocator(padded, "p. 1"));
+    }
+
+    [Fact]
+    public void Corpus_ids_differing_only_in_case_remain_distinct()
+    {
+        // Stated, not softened: the kernel has no basis for deciding whether a corpus
+        // scheme is case-sensitive, so it does not guess.
+        Assert.NotEqual(new SourceBaselineId("Core", Hash), new SourceBaselineId("core", Hash));
     }
 
     [Fact]

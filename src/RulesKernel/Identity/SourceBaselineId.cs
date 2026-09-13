@@ -48,6 +48,7 @@ public readonly record struct SourceBaselineId
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        Provenance.SourceLocator.ThrowIfNotACanonicalSourceId(sourceId, nameof(sourceId));
 
         if (!IsSha256Hex(contentHash))
         {
