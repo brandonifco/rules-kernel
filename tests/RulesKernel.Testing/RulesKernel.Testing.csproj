@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Test-support code shared across this repository's test projects, and published so
+       engines built on the kernel can use the same scripted source in their own tests.
+       It is not a test project: it carries no test framework and runs no tests. -->
+  <PropertyGroup>
+    <RootNamespace>RulesKernel.Testing</RootNamespace>
+    <PackageId>RulesKernel.Testing</PackageId>
+    <Description>Test doubles for deterministic engines: a scripted IRandomSource that fails loudly on exhaustion.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/RulesKernel.Randomness/RulesKernel.Randomness.csproj" />
+  </ItemGroup>
+
+</Project>

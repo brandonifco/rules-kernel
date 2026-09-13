@@ -1,0 +1,42 @@
+<Project>
+
+  <!-- Repo-wide defaults. This is a deterministic rules kernel consumed as a versioned
+       package by engines that outlive it: reproducibility and zero-warning builds are
+       load-bearing, not stylistic. See docs/architecture.md. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn />
+    <!-- Each project restores from its own committed packages.lock.json rather than
+         letting NuGet re-resolve transitive versions on every restore. A kernel whose
+         central claim is reproducibility cannot have a build that quietly resolves
+         differently from one machine to the next. Regenerate deliberately; the exact
+         command is in scripts/validate.sh's restore step. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <!-- Packaging defaults. The kernel is REFERENCED, never copied: a fix here reaches
+       every engine built on it through a version bump. That is the whole reason this
+       repository is separate from any engine. See docs/decisions/0001. -->
+  <PropertyGroup>
+    <Authors>Brandon</Authors>
+    <Product>Rules Kernel</Product>
+    <RepositoryUrl>https://github.com/brandonifco/rules-kernel</RepositoryUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

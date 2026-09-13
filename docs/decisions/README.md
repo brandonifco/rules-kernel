@@ -1,0 +1,20 @@
+# Decisions
+
+One file per decision that would otherwise be re-litigated, re-derived, or quietly
+reversed. A decision record states what was decided, what the alternatives were, and what
+follows from it — not how the code works, which is the code's job.
+
+Numbering is sequential and permanent. A superseded decision is marked superseded in place
+and kept; its number is never reused, because references to it exist in code comments and
+in other decisions.
+
+`tools/repo-checks.py --only doc-references` fails the build on a reference to a decision
+that does not exist, so a citation in a comment is a promise this repository keeps.
+
+| # | Decision |
+|---|----------|
+| [0001](0001-kernel-scope-and-layering.md) | Kernel scope and layering |
+| [0002](0002-randomness-is-optional.md) | Randomness is optional, and dice are not kernel vocabulary |
+| [0003](0003-corpus-baselines-and-the-temporal-axis.md) | Corpus baselines are plural and carry a temporal axis |
+| [0004](0004-unresolved-results-and-the-totality-burden.md) | Unresolved results, and where the totality burden sits |
+| [0005](0005-pinned-pseudorandom-algorithm.md) | A pinned, reference-verified pseudorandom algorithm |

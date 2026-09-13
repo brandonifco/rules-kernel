@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The ruleset-agnostic floor. RulesKernel must not reference any other assembly in
+       this repository, and must not touch the filesystem, a clock, the network, the
+       environment, or randomness. Enforced by the layering and core-boundary checks in
+       tools/repo-checks.py, and by ArchitectureTests. See docs/decisions/0001. -->
+  <PropertyGroup>
+    <RootNamespace>RulesKernel</RootNamespace>
+    <PackageId>RulesKernel</PackageId>
+    <Description>Ruleset-agnostic determinism primitives: replay identity, provenance, and the unresolved-result contract.</Description>
+  </PropertyGroup>
+
+</Project>

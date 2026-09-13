@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RulesKernel/RulesKernel.csproj" />
+    <Project Path="src/RulesKernel.Randomness/RulesKernel.Randomness.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RulesKernel.Testing/RulesKernel.Testing.csproj" />
+    <Project Path="tests/RulesKernel.Tests/RulesKernel.Tests.csproj" />
+    <Project Path="tests/RulesKernel.Randomness.Tests/RulesKernel.Randomness.Tests.csproj" />
+  </Folder>
+</Solution>

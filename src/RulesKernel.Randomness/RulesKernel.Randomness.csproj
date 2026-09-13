@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Optional by design. An engine over a corpus that resolves no random outcome, such
+       as a statute, a regulation, or a deterministic board game, references RulesKernel
+       and never this package. See docs/decisions/0002. -->
+  <PropertyGroup>
+    <RootNamespace>RulesKernel.Randomness</RootNamespace>
+    <PackageId>RulesKernel.Randomness</PackageId>
+    <Description>Replay-stable pseudorandomness: PCG32 and bias-free bounded draws.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../RulesKernel/RulesKernel.csproj" />
+  </ItemGroup>
+
+</Project>
