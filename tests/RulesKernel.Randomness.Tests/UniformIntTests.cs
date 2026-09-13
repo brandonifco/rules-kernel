@@ -82,6 +82,27 @@ public sealed class UniformIntTests
         return DrawSpace - (DrawSpace % bound);
     }
 
+    /// <summary>
+    /// The mapping every tabletop adopter needs and would otherwise derive for themselves:
+    /// a raw value below the bound is always accepted, so scripting face <c>f</c> on a
+    /// <c>d(b)</c> is scripting the raw value <c>f - 1</c>. Documented on Below; pinned here.
+    /// </summary>
+    [Theory]
+    [InlineData(4u)]
+    [InlineData(6u)]
+    [InlineData(20u)]
+    [InlineData(100u)]
+    public void A_raw_value_below_the_bound_is_returned_unchanged_in_one_draw(uint bound)
+    {
+        for (uint face = 1; face <= bound; face++)
+        {
+            var source = new FixedSequenceRandomSource([face - 1]);
+
+            Assert.Equal(face - 1, UniformInt.Below(source, bound));
+            Assert.Equal(1, source.Consumed);
+        }
+    }
+
     [Theory]
     [InlineData(1u)]
     [InlineData(2u)]

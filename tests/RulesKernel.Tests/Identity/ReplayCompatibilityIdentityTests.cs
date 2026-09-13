@@ -11,8 +11,8 @@ public sealed class ReplayCompatibilityIdentityTests
 
     private static readonly RulesetVersion Ruleset = new("example", 1);
     private static readonly ReplaySchemaVersion Schema = new(1);
-    private static readonly SourceBaselineId CoreBook = new("core", HashA);
-    private static readonly SourceBaselineId Supplement = new("supplement", HashB);
+    private static readonly SourceBaselineId CoreBook = new("core", HashA, "pdf-bytes");
+    private static readonly SourceBaselineId Supplement = new("supplement", HashB, "pdf-bytes");
 
     private static ReplayCompatibilityIdentity Identity(
         IEnumerable<SourceBaselineId>? baselines = null,
@@ -118,7 +118,7 @@ public sealed class ReplayCompatibilityIdentityTests
     [Fact]
     public void Two_baselines_for_the_same_corpus_are_rejected()
     {
-        var duplicate = new SourceBaselineId(CoreBook.SourceId, HashB);
+        var duplicate = new SourceBaselineId(CoreBook.SourceId, HashB, "pdf-bytes");
 
         var error = Assert.Throws<ArgumentException>(() => Identity([CoreBook, duplicate]));
         Assert.Contains(CoreBook.SourceId, error.Message, StringComparison.Ordinal);

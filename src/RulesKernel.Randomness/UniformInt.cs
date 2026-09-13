@@ -47,6 +47,13 @@ public static class UniformInt
     /// rather than looping, so a test scripting only rejected values fails visibly before
     /// this method could hang.
     /// </para>
+    /// <para>
+    /// Scripting a specific outcome in a test is therefore direct: a raw value below the
+    /// bound is always accepted, because the acceptance limit is never smaller than the
+    /// bound. So a raw <c>v</c> under a bound of <c>b</c> yields exactly <c>v</c>, and a
+    /// die face <c>f</c> on a <c>d(b)</c> is scripted as the raw value <c>f - 1</c>. No
+    /// rejection arithmetic is needed to hit a chosen result.
+    /// </para>
     /// </summary>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="exclusiveBound"/> is zero.</exception>

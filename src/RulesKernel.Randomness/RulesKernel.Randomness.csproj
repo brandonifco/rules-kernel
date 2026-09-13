@@ -3,6 +3,16 @@
   <!-- Optional by design. An engine over a corpus that resolves no random outcome, such
        as a statute, a regulation, or a deterministic board game, references RulesKernel
        and never this package. See docs/decisions/0002. -->
+  <!-- Multi-targeted so an engine does not have to upgrade its framework before it can
+       adopt the kernel. That is not hypothetical: SRD_Combat is net8.0 with rollForward
+       disabled, and a net10.0-only package locked it out of even the dependency-free base
+       assembly. A kernel whose whole purpose is being referenced by engines that outlive
+       it cannot make the framework the price of entry. -->
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFramework />
+  </PropertyGroup>
+
   <PropertyGroup>
     <RootNamespace>RulesKernel.Randomness</RootNamespace>
     <PackageId>RulesKernel.Randomness</PackageId>
