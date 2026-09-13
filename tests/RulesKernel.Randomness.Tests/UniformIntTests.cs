@@ -134,15 +134,36 @@ public sealed class UniformIntTests
         Assert.Equal(2, source.Consumed);
     }
 
+    /// <summary>
+    /// Uniformity, asserted against the production code rather than against the test's own
+    /// arithmetic. An earlier version of this test compared <see cref="AcceptanceLimit"/> to
+    /// itself and invoked nothing -- a tautology, and precisely the failure mode
+    /// docs/decisions/0006 exists to correct.
+    /// </summary>
     [Theory]
-    [InlineData(1u)]
-    [InlineData(2u)]
+    [InlineData(3u)]
     [InlineData(6u)]
-    [InlineData(1u << 31)]
-    [InlineData(uint.MaxValue)]
+    [InlineData(7u)]
     public void Every_outcome_receives_the_same_number_of_raw_values(uint bound)
     {
-        Assert.Equal(0UL, AcceptanceLimit(bound) % bound);
+        // Every raw value in the accepted window, walked through the real mapping: each
+        // outcome must come up exactly as often as every other.
+        ulong limit = AcceptanceLimit(bound);
+        var counts = new int[bound];
+
+        // A whole number of cycles, or the tail of a partial cycle would make the last few
+        // outcomes legitimately come up once more than the rest and the assertion would fail
+        // on arithmetic rather than on bias.
+        uint window = 60_000 - (60_000 % bound);
+        Assert.True(window < limit, "the sampled window must lie entirely inside the accepted range");
+
+        for (uint raw = 0; raw < window; raw++)
+        {
+            counts[UniformInt.Below(new FixedSequenceRandomSource([raw]), bound)]++;
+        }
+
+        int expected = (int)(window / bound);
+        Assert.All(counts, c => Assert.Equal(expected, c));
     }
 
     [Fact]

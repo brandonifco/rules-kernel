@@ -55,6 +55,24 @@ can then equal or exceed the limit, so nothing is rejected -- the correct answer
 Tests derive their expectations from the definition rather than from the implementation,
 and cover 1, 2, 6, 20, 2^16, 2^31 and `uint.MaxValue` explicitly.
 
+## Other compatibility changes shipping alongside
+
+Recorded here rather than left unstated, because this repository holds that a compatibility
+change is a decision. None of them was noticed while making the fixes; an adversarial review
+compiled a 0.1.0-legal consumer against the new assemblies and found them.
+
+- **`ReplayCompatibilityIdentity.SourceBaselines` changed from `IReadOnlyList<SourceBaselineId>`
+  to `ImmutableArray<SourceBaselineId>`.** `ImmutableArray` exposes `Count` only as an explicit
+  interface implementation, so `.Count` no longer binds and becomes `.Length`. Source-breaking.
+- **`ReplayCompatibilityIdentity` now rejects two baselines naming the same corpus.**
+  `[core@h1, core@h1]` constructed in 0.1.0 and throws now. Behaviour-breaking, deliberately.
+- **`Resolution<T>`'s cases lost, and regained, their deconstructors.** Making the constructors
+  internal required rewriting positional records as bodied ones, which silently dropped the
+  compiler-generated `Deconstruct` -- breaking `is Resolution<T>.Resolved(var v)`, the exact
+  use the type documentation recommends. `Deconstruct` is now written explicitly and pinned by
+  a test. `with { Value = ... }` remains unavailable, which is intended: the properties are
+  get-only so a case cannot be rebuilt around a substituted payload.
+
 ## Consequences
 
 **This is a replay-compatibility event for any engine drawing at a bound that divides 2^32.**

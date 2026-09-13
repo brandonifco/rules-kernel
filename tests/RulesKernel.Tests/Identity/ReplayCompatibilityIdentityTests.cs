@@ -70,10 +70,12 @@ public sealed class ReplayCompatibilityIdentityTests
     }
 
     /// <summary>
-    /// The identity copies what it is given. Before this was true, the constructor stored
-    /// the caller's array and exposed it as IReadOnlyList -- which a caller could cast back
-    /// to SourceBaselineId[] and write through, changing the hash code of a value whose
-    /// entire purpose is to be a stable identity, potentially while it sat in a dictionary.
+    /// A defensive-copy guard. This passed before the immutability work too -- the
+    /// constructor already copied its input -- so it is a regression guard, not evidence for
+    /// that fix. The defect was on the other side: the property handed the backing array out
+    /// as <c>IReadOnlyList</c>, which a caller could cast straight back to an array. That is
+    /// now closed by the property's type, which is why the test below asserts the type rather
+    /// than attempting a cast that no longer compiles.
     /// </summary>
     [Fact]
     public void Mutating_the_array_that_was_passed_in_cannot_change_the_identity()
@@ -87,6 +89,26 @@ public sealed class ReplayCompatibilityIdentityTests
         Assert.Equal(hashBefore, identity.GetHashCode());
         Assert.Equal(CoreBook, identity.SourceBaselines[0]);
         Assert.Equal(Identity(), identity);
+    }
+
+    /// <summary>
+    /// The fix for the exposure defect is carried by the property's type: an
+    /// <see cref="System.Collections.Immutable.ImmutableArray{T}"/> cannot be cast to
+    /// <c>SourceBaselineId[]</c>, so the original one-line attack no longer compiles.
+    ///
+    /// <para>
+    /// It is not unreachable -- <c>ImmutableCollectionsMarshal.AsArray</c> still returns the
+    /// live array, and no in-process design can prevent that. This asserts the guarantee that
+    /// actually exists rather than one that does not.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_exposed_baselines_are_not_an_array_a_caller_can_write_through()
+    {
+        var exposed = Identity().SourceBaselines;
+
+        Assert.IsType<System.Collections.Immutable.ImmutableArray<SourceBaselineId>>(exposed);
+        Assert.False(exposed.GetType().IsArray);
     }
 
     /// <summary>

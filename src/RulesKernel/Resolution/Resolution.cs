@@ -42,6 +42,15 @@ public abstract record Resolution<T>
 
         /// <summary>The answer.</summary>
         public T Value { get; }
+
+        /// <summary>
+        /// Supports positional matching -- <c>case Resolution&lt;T&gt;.Resolved(var value)</c>.
+        /// Restored explicitly: rewriting this from a positional record to a bodied one to
+        /// make the constructor internal silently removed the compiler-generated
+        /// deconstructor, which would have been a source break for callers doing exactly what
+        /// this type's documentation tells them to do.
+        /// </summary>
+        public void Deconstruct(out T value) => value = Value;
     }
 
     /// <summary>
@@ -56,6 +65,9 @@ public abstract record Resolution<T>
 
         /// <summary>The reason, what was attempted, and where the rule lives.</summary>
         public UnresolvedResult Result { get; }
+
+        /// <summary>Supports positional matching; see <see cref="Resolved.Deconstruct"/>.</summary>
+        public void Deconstruct(out UnresolvedResult result) => result = Result;
     }
 
     /// <summary>Wraps a resolved value.</summary>

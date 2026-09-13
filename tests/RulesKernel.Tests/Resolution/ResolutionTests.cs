@@ -52,6 +52,31 @@ public sealed class ResolutionTests
     }
 
     /// <summary>
+    /// Positional matching is what the cases are public for. Making the constructors internal
+    /// meant rewriting them from positional records to bodied ones, which silently removed
+    /// the compiler-generated deconstructor -- a source break for callers doing exactly what
+    /// the documentation tells them to do. Deconstruct is now explicit, and pinned here.
+    /// </summary>
+    [Fact]
+    public void Both_cases_support_positional_matching()
+    {
+        Assert.Equal(7, Resolution<int>.FromValue(7) switch
+        {
+            Resolution<int>.Resolved(var value) => value,
+            Resolution<int>.Unresolved(var _) => -1,
+            _ => -2,
+        });
+
+        Assert.Equal(
+            UnresolvedReason.UnsupportedRule,
+            Resolution<int>.FromUnresolved(Gap()) switch
+            {
+                Resolution<int>.Unresolved(var gap) => gap.Reason,
+                _ => throw new InvalidOperationException("expected the unresolved case"),
+            });
+    }
+
+    /// <summary>
     /// The factories are the only way in. While the nested cases had public constructors,
     /// new Resolution&lt;int&gt;.Unresolved(null!) bypassed the null check FromUnresolved
     /// performs -- an unguarded second door that callers would eventually find.

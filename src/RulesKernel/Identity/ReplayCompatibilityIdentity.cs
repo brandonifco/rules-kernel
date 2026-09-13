@@ -52,11 +52,22 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// the same corpus.
     ///
     /// <para>
-    /// <see cref="ImmutableArray{T}"/> rather than <see cref="IReadOnlyList{T}"/>: an
-    /// interface-typed array can be cast back to its concrete type and written through, and
-    /// this type's equality and hash code are computed from these entries. A caller who did
-    /// that could change an identity's hash while it sat in a dictionary -- in the one type
-    /// whose entire purpose is being a stable, comparable identity.
+    /// <see cref="ImmutableArray{T}"/> rather than <see cref="IReadOnlyList{T}"/> because an
+    /// interface-typed array can be cast straight back to <c>SourceBaselineId[]</c> and
+    /// written through, and this type's equality and hash code are computed from these
+    /// entries -- so that cast could change an identity's hash while it sat in a dictionary,
+    /// in the one type whose whole purpose is being a stable identity.
+    /// </para>
+    ///
+    /// <para>
+    /// This raises the bar; it does not make the entries unreachable.
+    /// <c>ImmutableCollectionsMarshal.AsArray</c> still returns the live backing array, with
+    /// no reflection and no <c>unsafe</c>, and writing through it reproduces the original
+    /// defect exactly. Nothing in process can prevent that. What changes is that it stops
+    /// being an ordinary cast a caller might reach for by accident and becomes a documented
+    /// escape hatch whose name says what it is doing. Stating that plainly is the point: an
+    /// argument in a comment here is meant to be checkable, and "immutable therefore safe"
+    /// would not survive checking.
     /// </para>
     /// </summary>
     public ImmutableArray<SourceBaselineId> SourceBaselines => _sourceBaselines;
