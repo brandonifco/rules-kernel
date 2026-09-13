@@ -1,0 +1,40 @@
+name: pcg-vectors
+
+# tools/pcg-vectors/generate.sh --check re-derives the committed PCG32 reference vectors
+# from the pinned upstream commit (imneme/pcg-c-basic) and diffs them against
+# tests/RulesKernel.Randomness.Tests/Pcg32ReferenceVectors.cs. It is deliberately excluded
+# from ./scripts/validate.sh, which is hermetic by design (no network, no C compiler
+# requirement) -- but that means nothing runs it unless something like this workflow does.
+# As docs/decisions/0005 puts it: the vectors are the replay contract, and a wrong vector
+# does not fail -- it passes, forever, until something actually re-derives it and looks.
+#
+# This workflow is that "something": a weekly re-derivation, plus an on-demand one. It
+# needs network (to fetch the pinned upstream files), a C compiler, and sha256sum -- all
+# present on ubuntu-24.04's default image without extra setup.
+#
+# This workflow does NOT gate merges or publishing. It reports drift; it does not block
+# anything, and treating an upstream-fetch failure (network hiccup, GitHub raw outage) as
+# a merge-blocking condition would make the gate flaky for a reason that has nothing to do
+# with the change being merged. A failure here means "go look", not "revert".
+
+on:
+  schedule:
+    # Weekly. Cron is UTC; day-of-week 1 = Monday.
+    - cron: "17 6 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check-vectors:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Re-derive and compare against the committed fixture
+        run: tools/pcg-vectors/generate.sh --check

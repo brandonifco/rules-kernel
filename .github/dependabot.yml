@@ -1,0 +1,31 @@
+# Dependency update policy for this repository.
+#
+# Without this file, an advisory against Microsoft.NET.Test.Sdk, xunit,
+# xunit.runner.visualstudio, or any pinned GitHub Action SHA has no path to surface here:
+# nothing watches for it. This does not itself guarantee updates get merged -- these are
+# still ordinary PRs subject to ./scripts/validate.sh full -- it only guarantees someone is
+# told an update exists.
+#
+# Grouped and monthly rather than the defaults (ungrouped, as-soon-as-possible): a stream
+# of single-package PRs each showing a one-line version bump trains reviewers to merge on
+# reflex rather than read the changelog. One grouped PR per ecosystem per month is small
+# enough to actually review.
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      nuget-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"

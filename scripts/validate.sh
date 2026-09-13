@@ -41,6 +41,97 @@ run() {
 # someone pastes into a PR would say the tests passed. Misleading output is its own defect.
 skipped() { printf '%sskip%s %s (depends on a step that failed)\n' "$YEL" "$OFF" "$1"; }
 
+# `dotnet test` exits 0 when it finds nothing to test. Verified on this SDK (10.0.112):
+# an .slnx with zero projects prints "Unable to find a project to restore!" and exits 0.
+# The same silent-pass shape is reachable without anything that dramatic: a project can
+# stop being part of $SOLUTION (a typo'd path, a dropped <Project> line, an accidental
+# Condition) while every *other* test project still runs and passes, and the run still
+# reports "ok". Exit code alone is not evidence that this solution's tests ran.
+#
+# The fix asks two independent questions of the actual test-run output (a TRX file per
+# project, requested below), not of the exit code:
+#   1. did every project this solution DECLARES as a test project (<IsTestProject>true</
+#      IsTestProject> in its own .csproj) produce a result file? A project that silently
+#      dropped out of $SOLUTION produces none, and is caught even though the rest passed.
+#   2. did the sum of tests those files record come to more than zero? A solution that
+#      declares no test projects at all -- or a result wipeout -- is caught even though
+#      (1) is vacuously satisfied.
+# Neither question is answerable from "dotnet test exited 0", which is the entire point.
+expected_test_projects() {
+  python3 - "$SOLUTION" <<'PY'
+import re, sys, pathlib
+
+sln_path = pathlib.Path(sys.argv[1])
+sln_dir = sln_path.parent
+project_paths = re.findall(r'Project Path="([^"]+)"', sln_path.read_text(encoding="utf-8"))
+
+count = 0
+for rel in project_paths:
+    csproj = sln_dir / rel
+    if not csproj.exists():
+        # A dangling <Project> entry is tools/repo-checks.py's job (doc-references-style
+        # check), not this one's. We only count projects we can actually inspect.
+        continue
+    text = csproj.read_text(encoding="utf-8")
+    if re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.IGNORECASE):
+        count += 1
+print(count)
+PY
+}
+
+assert_tests_ran() {
+  local results_dir="$1" expected="$2"
+  python3 - "$results_dir" "$expected" <<'PY'
+import glob
+import sys
+import xml.etree.ElementTree as ET
+
+results_dir, expected = sys.argv[1], int(sys.argv[2])
+NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+
+trx_files = sorted(glob.glob(results_dir + "/**/*.trx", recursive=True))
+total = 0
+for f in trx_files:
+    counters = ET.parse(f).getroot().find(".//t:ResultSummary/t:Counters", NS)
+    if counters is not None:
+        total += int(counters.get("total", "0"))
+
+problems = []
+if len(trx_files) != expected:
+    problems.append(
+        f"expected {expected} test-project result file(s) (from "
+        f"<IsTestProject>true</IsTestProject> in the solution's own .csproj files), "
+        f"found {len(trx_files)}. A test project silently stopped running."
+    )
+if total == 0:
+    problems.append("zero tests were discovered/executed across all test projects")
+
+if problems:
+    for p in problems:
+        print(f"error: {p}", file=sys.stderr)
+    sys.exit(1)
+print(f"{total} test(s) across {len(trx_files)} project(s) actually ran")
+PY
+}
+
+EXPECTED_TEST_PROJECTS="$(expected_test_projects)"
+
+# `env` with no VAR=val arguments before the command just execs it unchanged, so
+# `test_pass Debug` (no third argument) and `test_pass Debug CI=true` share one code path.
+test_pass() {
+  local config="$1"; shift
+  local results_dir status
+  results_dir="$(mktemp -d)"
+  status=0
+  env "$@" dotnet test "$SOLUTION" -c "$config" --no-build --nologo \
+    --logger "trx" --results-directory "$results_dir" || status=$?
+  if ! assert_tests_ran "$results_dir" "$EXPECTED_TEST_PROJECTS"; then
+    status=1
+  fi
+  rm -rf "$results_dir"
+  return "$status"
+}
+
 step "SDK pin"
 pinned="$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')"
 roll="$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"].get("rollForward",""))')"
@@ -69,28 +160,45 @@ run "dotnet format --verify-no-changes" \
 
 step "Build + test (Debug)"
 if run "build Debug (0 warnings)" dotnet build "$SOLUTION" -c Debug --no-restore -warnaserror; then
-  run "test Debug" dotnet test "$SOLUTION" -c Debug --no-build --nologo || true
+  run "test Debug" test_pass Debug || true
 else
   skipped "test Debug"
 fi
 
 if [[ "$MODE" != "fast" ]]; then
-  # Release is not ceremonial: different optimisation settings are historically where
-  # "works on my machine" determinism bugs surface.
-  step "Build + test (Release)"
-  if run "build Release (0 warnings)" dotnet build "$SOLUTION" -c Release --no-restore -warnaserror; then
-    run "test Release" dotnet test "$SOLUTION" -c Release --no-build --nologo || true
+  # This is the pass that matters most, and it changed shape from the original three:
+  #
+  # Release used to be built here WITHOUT CI=true, while a separate pass built Debug WITH
+  # it. That meant the one configuration that is actually packed and published -- Release
+  # -- never got ContinuousIntegrationBuild applied by anything *this script* controls.
+  # It happened to come out right when a caller's environment already had CI=true set for
+  # the whole step (as build-and-test.yml's Validate step does), because child processes
+  # inherit environment variables -- but that made CI parity for the shipped bits an
+  # accident of the caller, not a guarantee of the gate. A hermetic gate should not depend
+  # on what its caller's shell already exported.
+  #
+  # So: force CI=true on the Release pass explicitly, regardless of the ambient
+  # environment. This is also the exact configuration `publish.yml` now rebuilds before
+  # packing (see that workflow's `publish` job), so what gets tested here, right down to
+  # ContinuousIntegrationBuild's source-path normalisation, is what gets shipped. Nothing
+  # from the old Release-without-CI pass is lost: optimisation-level coverage (the original
+  # reason for a Release pass) and CI-env coverage are now exercised together, on the
+  # combination that is actually real -- Release+CI=true is the only Release configuration
+  # any workflow in this repository ever produces.
+  step "Build + test (Release, CI=true -- this is what ships)"
+  if run "build Release w/ CI=true (0 warnings)" env CI=true dotnet build "$SOLUTION" -c Release --no-restore -warnaserror; then
+    run "test Release w/ CI=true" test_pass Release CI=true || true
   else
-    skipped "test Release"
+    skipped "test Release w/ CI=true"
   fi
 
-  # CI sets CI=true, which flips ContinuousIntegrationBuild on via Directory.Build.props.
-  # That rewrites compile-time source paths, changing anything derived from them. Neither
-  # pass above exercises it, so a test sensitive to it can pass locally and fail on every
-  # CI run. Reproduce CI's own env var, not an equivalent property.
-  step "Build + test (CI parity, CI=true)"
-  if run "build Debug w/ CI=true" env CI=true dotnet build "$SOLUTION" -c Debug --no-restore -warnaserror; then
-    run "test Debug w/ CI=true" env CI=true dotnet test "$SOLUTION" -c Debug --no-build --nologo || true
+  # A second, cheap CI-parity data point on the fast (Debug) configuration: this catches an
+  # env-conditional bug that has nothing to do with optimisation settings, without paying
+  # for a second Release build. Kept from the original three passes for exactly the
+  # coverage it always provided.
+  step "Build + test (CI parity, Debug w/ CI=true)"
+  if run "build Debug w/ CI=true (0 warnings)" env CI=true dotnet build "$SOLUTION" -c Debug --no-restore -warnaserror; then
+    run "test Debug w/ CI=true" test_pass Debug CI=true || true
   else
     skipped "test Debug w/ CI=true"
   fi
@@ -99,7 +207,15 @@ fi
 step "Repository invariants"
 run "repo-checks" tools/repo-checks.py || true
 
-step "Whitespace"
+# This step's name says what it actually checks, which is narrower than "Whitespace" implied.
+# `git diff --check` only flags whitespace errors (trailing blanks, mixed tabs) in the
+# working tree relative to the index/HEAD. After `actions/checkout` the tree is clean, so
+# in CI this step diffs nothing, is unconditionally exit 0, and printing "ok" there proves
+# nothing about the commit being validated -- it is only meaningful when a human or agent
+# runs validate.sh against a dirty working tree before committing. It stays in `full`
+# because that is still a real and useful catch locally; it is named and commented here so
+# nobody mistakes a green CI run of this step for a whitespace audit of the change itself.
+step "Whitespace (uncommitted working-tree changes only -- a no-op in CI after checkout)"
 run "git diff --check" git diff --check || true
 
 echo
