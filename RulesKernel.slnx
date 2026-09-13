@@ -8,4 +8,7 @@
     <Project Path="tests/RulesKernel.Tests/RulesKernel.Tests.csproj" />
     <Project Path="tests/RulesKernel.Randomness.Tests/RulesKernel.Randomness.Tests.csproj" />
   </Folder>
+  <Folder Name="/probes/">
+    <Project Path="probes/RegulatoryProbe.Tests/RegulatoryProbe.Tests.csproj" />
+  </Folder>
 </Solution>

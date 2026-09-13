@@ -56,6 +56,9 @@ ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
     "RulesKernel.Testing": {"RulesKernel.Randomness"},
     "RulesKernel.Tests": {"RulesKernel"},
     "RulesKernel.Randomness.Tests": {"RulesKernel.Randomness", "RulesKernel.Testing"},
+    # A probe: proves the kernel is usable by something that is not a game. Its
+    # reference set is deliberately just the kernel -- see probes/README.md.
+    "RegulatoryProbe.Tests": {"RulesKernel"},
 }
 
 PROJECT_DIRS: dict[str, str] = {
@@ -64,6 +67,7 @@ PROJECT_DIRS: dict[str, str] = {
     "RulesKernel.Testing": "tests",
     "RulesKernel.Tests": "tests",
     "RulesKernel.Randomness.Tests": "tests",
+    "RegulatoryProbe.Tests": "probes",
 }
 
 SRC_PROJECTS = {name for name, where in PROJECT_DIRS.items() if where == "src"}
@@ -189,7 +193,7 @@ def check_layering(root: Path) -> CheckResult:
     """
     result = CheckResult()
     found: dict[str, Path] = {}
-    for where in ("src", "tests"):
+    for where in ("src", "tests", "probes"):
         directory = root / where
         if not directory.is_dir():
             continue
