@@ -24,8 +24,8 @@ public sealed class ProbeTests
             replaySchema: new ReplaySchemaVersion(1),
             sourceBaselines:
             [
-                new SourceBaselineId(DeferralLimitEngine.StatuteCorpus, StatuteHash, asOf),
-                new SourceBaselineId(DeferralLimitEngine.AdjustmentCorpus, adjustmentHash, asOf),
+                new SourceBaselineId(DeferralLimitEngine.StatuteCorpus, StatuteHash, "ecfr-xml", asOf),
+                new SourceBaselineId(DeferralLimitEngine.AdjustmentCorpus, adjustmentHash, "notice-text", asOf),
             ]);
 
     private static DeferralLimitEngine Engine(DateOnly asOf, string hash, Dictionary<int, int> data) =>
@@ -113,7 +113,7 @@ public sealed class ProbeTests
         var statuteOnly = new ReplayCompatibilityIdentity(
             new RulesetVersion("deferral-limit", 1),
             new ReplaySchemaVersion(1),
-            [new SourceBaselineId(DeferralLimitEngine.StatuteCorpus, StatuteHash, new DateOnly(2019, 3, 14))]);
+            [new SourceBaselineId(DeferralLimitEngine.StatuteCorpus, StatuteHash, "ecfr-xml", new DateOnly(2019, 3, 14))]);
 
         Assert.NotEqual(both, statuteOnly);
     }

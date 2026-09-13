@@ -50,6 +50,25 @@ is a broken source, not a failed draw, and a cap would misreport the former as t
 Sources that cannot honour the distribution contract are expected to fail loudly:
 `FixedSequenceRandomSource` throws on exhaustion rather than looping.
 
+## The seeding routine is part of the contract
+
+`RandomAlgorithmId` names the output function. The routine that turns a seed into a starting
+state is equally load-bearing -- `FromSeed`'s two discarded draws and its stream convention
+determine every value that follows -- and an identity naming only the algorithm would let two
+engines that seed differently compare as compatible while producing different sequences.
+
+That is closed, and by evidence rather than by assertion: the reference vectors record the
+post-seed state (`StateAfterSeed`, `IncrementAfterSeed`) and the tests assert it *before*
+drawing a single value, so a change to `FromSeed` fails against the fixture exactly as a
+change to the output function would. The seeding routine is pinned by the same oracle.
+
+What is **not** the kernel's business is how an engine derives the seed it passes in. An
+engine hashing a campaign name, or deriving per-fight seeds from a run seed, owns that
+computation; it belongs to that engine's `RulesetVersion`, not to the kernel's algorithm
+identity. Worth stating because a careful engine will build exactly such a derivation --
+SRD_Combat hand-rolled a SplitMix64 finalizer specifically to avoid `HashCode.Combine`,
+whose output is not stable across releases.
+
 ## Alternatives considered
 
 **Keep `System.Random` with a recorded algorithm id.** Rejected: recording the identity of a

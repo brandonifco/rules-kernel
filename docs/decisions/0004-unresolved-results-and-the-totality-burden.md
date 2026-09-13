@@ -55,6 +55,30 @@ things that make a gap actionable.
 **Keeping the universal-union requirement.** Rejected for the reason above — it was already
 being violated by correct code.
 
+## What this is not: a refusal
+
+An engine has two different negative answers, and conflating them corrupts the signal this
+union exists to carry.
+
+**"Resolved: no"** is the engine applying the corpus correctly and arriving at a negative
+answer. You cannot take that action because you already spent your bonus action; the target
+is not visible; the item is not recharged. The rule was found, read and applied. That is an
+ordinary domain result and it belongs in the operation's own return type.
+
+**"Unresolved"** is about the engine's relationship to its corpus: the rule exists and is not
+implemented, or the corpus is ambiguous, or the data is missing.
+
+The distinction has teeth because the shapes look alike. SRD_Combat carries an
+`ActionRefusal(Code, Message)` with 146 construction sites and 92 distinct codes --
+`target.unseen`, `bonus_action.spent` -- which superficially resembles
+`UnresolvedResult(Reason, Attempted, Locator)`. Porting one onto the other would force an
+engine to invent a `SourceLocator` for "you already used your bonus action", and would fill
+the unresolved channel with outcomes that are not gaps at all. The channel is only useful
+while everything in it is genuinely something the engine could not answer.
+
+A test: if the corpus fully determines the answer and the answer is "no", it is a refusal.
+If you would have to guess to answer at all, it is unresolved.
+
 ## Consequences
 
 `Resolution<T>` is a closed hierarchy with a private constructor, so `Match` and a `switch`

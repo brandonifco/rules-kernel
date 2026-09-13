@@ -35,19 +35,52 @@ public readonly record struct SourceBaselineId
     public string ContentHash { get; }
 
     /// <summary>
+    /// What the hash was computed over, in the grammar the corpus's adapter declares --
+    /// <c>"pdf-bytes"</c>, <c>"extracted-json"</c>, <c>"id-roster"</c>.
+    ///
+    /// <para>
+    /// Required, because a hash on its own does not say what it is a hash of, and this type
+    /// was documented as though it did. A real engine demonstrates the gap: SRD_Combat
+    /// fingerprints its corpus by hashing the sorted roster of content ids and says so in
+    /// its own comment -- "by id alone, not by the numbers behind them. Two loads with the
+    /// exact same roster of ids fingerprint identically even if a description changed
+    /// underneath." That is a legitimate, deliberately coarse hash, and it is the value that
+    /// engine would naturally put here.
+    /// </para>
+    ///
+    /// <para>
+    /// Without this field, two engines could both publish <c>srd-5.2.1#&lt;64 hex&gt;</c>
+    /// having hashed the PDF bytes, the extracted JSON, and the id roster respectively --
+    /// comparing unequal for identical corpora, or, worse, an engine believing its baseline
+    /// pins content it does not pin. With it, the mismatch is visible as data, which is the
+    /// same reason <see cref="RandomAlgorithmId"/> exists rather than trusting that two
+    /// generators agreeing today will keep agreeing.
+    /// </para>
+    ///
+    /// <para>
+    /// The kernel does not interpret this string, exactly as it does not interpret a
+    /// citation: only the adapter that produced the hash can define what it covers.
+    /// </para>
+    /// </summary>
+    public string HashDerivation { get; }
+
+    /// <summary>
     /// The moment of the corpus this baseline pins, for a corpus that is revised over time;
     /// <see langword="null"/> for one that is not. See the type documentation.
     /// </summary>
     public DateOnly? AsOf { get; }
 
     /// <exception cref="ArgumentException">
-    /// <paramref name="sourceId"/> is null, empty, or whitespace, or
+    /// <paramref name="sourceId"/>, <paramref name="contentHash"/> or
+    /// <paramref name="hashDerivation"/> is null, empty, or whitespace, or
     /// <paramref name="contentHash"/> is not 64 hexadecimal characters.
     /// </exception>
-    public SourceBaselineId(string sourceId, string contentHash, DateOnly? asOf = null)
+    public SourceBaselineId(
+        string sourceId, string contentHash, string hashDerivation, DateOnly? asOf = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(hashDerivation);
         Provenance.SourceLocator.ThrowIfNotACanonicalSourceId(sourceId, nameof(sourceId));
 
         if (!IsSha256Hex(contentHash))
@@ -60,6 +93,7 @@ public readonly record struct SourceBaselineId
 
         SourceId = sourceId;
         ContentHash = contentHash.ToLowerInvariant();
+        HashDerivation = hashDerivation;
         AsOf = asOf;
     }
 
@@ -83,11 +117,14 @@ public readonly record struct SourceBaselineId
     }
 
     /// <summary>False for <c>default(SourceBaselineId)</c>, which bypasses the constructor.</summary>
-    public bool IsValid => !string.IsNullOrWhiteSpace(SourceId) && ContentHash is not null;
+    public bool IsValid =>
+        !string.IsNullOrWhiteSpace(SourceId)
+        && ContentHash is not null
+        && !string.IsNullOrWhiteSpace(HashDerivation);
 
     /// <inheritdoc/>
     public override string ToString() =>
         AsOf is { } date
-            ? string.Create(CultureInfo.InvariantCulture, $"{SourceId}@{date:yyyy-MM-dd}#{ContentHash}")
-            : $"{SourceId}#{ContentHash}";
+            ? string.Create(CultureInfo.InvariantCulture, $"{SourceId}@{date:yyyy-MM-dd}#{HashDerivation}:{ContentHash}")
+            : $"{SourceId}#{HashDerivation}:{ContentHash}";
 }

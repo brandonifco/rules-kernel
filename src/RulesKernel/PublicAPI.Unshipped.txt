@@ -29,9 +29,10 @@ RulesKernel.Identity.SourceBaselineId
 RulesKernel.Identity.SourceBaselineId.AsOf.get -> System.DateOnly?
 RulesKernel.Identity.SourceBaselineId.ContentHash.get -> string!
 RulesKernel.Identity.SourceBaselineId.Equals(RulesKernel.Identity.SourceBaselineId other) -> bool
+RulesKernel.Identity.SourceBaselineId.HashDerivation.get -> string!
 RulesKernel.Identity.SourceBaselineId.IsValid.get -> bool
 RulesKernel.Identity.SourceBaselineId.SourceBaselineId() -> void
-RulesKernel.Identity.SourceBaselineId.SourceBaselineId(string! sourceId, string! contentHash, System.DateOnly? asOf = null) -> void
+RulesKernel.Identity.SourceBaselineId.SourceBaselineId(string! sourceId, string! contentHash, string! hashDerivation, System.DateOnly? asOf = null) -> void
 RulesKernel.Identity.SourceBaselineId.SourceId.get -> string!
 RulesKernel.Provenance.SourceLocator
 RulesKernel.Provenance.SourceLocator.Citation.get -> string!
