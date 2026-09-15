@@ -60,6 +60,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Directories that never contain repository source: build output and tool caches. Used
 # when walking the filesystem directly rather than asking git.
+#
+# Every comparison below is against the path RELATIVE TO the root being walked, never the
+# absolute one. Testing absolute parts makes the location of the checkout part of the
+# answer: a clone under any directory named `packages`, `artifacts` or `obj` would have had
+# every file skipped, and a check that examined nothing is a check that proved nothing. The
+# same shape, with `worktrees`, really did zero validate.sh's test-project count when it ran
+# from a git worktree.
 IGNORED_PARTS = {
     ".git", "bin", "obj", ".dotnet", ".venv", "__pycache__", "artifacts", "TestResults",
     "node_modules", ".vs", "packages",
@@ -377,7 +384,7 @@ def repo_files(root: Path) -> list[Path]:
     # the case that matters, because it does not look like a failure.
     return [
         p for p in sorted(root.rglob("*"))
-        if p.is_file() and not any(part in IGNORED_PARTS for part in p.parts)
+        if p.is_file() and not any(part in IGNORED_PARTS for part in p.relative_to(root).parts)
     ]
 
 
@@ -412,7 +419,8 @@ def all_csproj(root: Path) -> list[Path]:
     inventory = {f.resolve() for f in repo_files(root)}
     return sorted(
         p for p in root.rglob("*.csproj")
-        if not any(part in IGNORED_PARTS for part in p.parts) and p.resolve() in inventory
+        if not any(part in IGNORED_PARTS for part in p.relative_to(root).parts)
+        and p.resolve() in inventory
     )
 
 
@@ -439,7 +447,7 @@ def cs_files_under(directory: Path) -> list[Path]:
         return []
     return [
         p for p in sorted(directory.rglob("*.cs"))
-        if not any(part in IGNORED_PARTS for part in p.parts)
+        if not any(part in IGNORED_PARTS for part in p.relative_to(directory).parts)
     ]
 
 
@@ -799,7 +807,7 @@ def check_layering(root: Path) -> CheckResult:
 
     for props_name in ("Directory.Build.props", "Directory.Build.targets"):
         for props in sorted(root.rglob(props_name)):
-            if any(part in IGNORED_PARTS for part in props.parts):
+            if any(part in IGNORED_PARTS for part in props.relative_to(root).parts):
                 continue
             if ANY_PROJECT_REF.search(props.read_text(encoding="utf-8", errors="replace")):
                 result.failures.append(Failure(
