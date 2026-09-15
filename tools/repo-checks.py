@@ -785,10 +785,10 @@ def _includes(pattern: re.Pattern[str], text: str) -> set[str]:
 def check_layering(root: Path) -> CheckResult:
     """The declared project-dependency graph must match the architecture, exactly.
 
-    This reads the csproj files rather than compiled output, which makes it exact: the C#
-    compiler omits references a compilation does not actually use, so the reflective
-    ArchitectureTests pass vacuously until real code crosses a boundary. This check bites
-    the moment a reference is written, including on an empty project.
+    This reads the csproj files rather than compiled output, so it bites the moment a
+    reference is written, including on an empty project. The ArchitectureTests read the
+    resolved graph from each test run's .deps.json and bite at the same moment; the two
+    disagree only when one of them misreads the build, which is the point of having both.
 
     Three edges count as a dependency, not one:
       * ProjectReference, in either quoting style;

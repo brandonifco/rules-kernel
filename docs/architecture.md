@@ -28,11 +28,12 @@ declared `ProjectReference` graph out of the csproj files, and it fails on any p
 present on disk but absent from the declared graph — an undeclared project must not
 silently escape enforcement.
 
-The per-assembly `ArchitectureTests` are a second net and are **not yet load-bearing**: the
-C# compiler omits assembly references a compilation does not actually use, so while no
-assembly consumes another, `GetReferencedAssemblies()` returns nothing and those assertions
-pass vacuously. They begin catching real violations as soon as code crosses an assembly
-boundary. Until then the declared-graph check is the enforcement.
+The per-assembly `ArchitectureTests` are a second net, read from the build rather than from
+text. They read the `.deps.json` the SDK writes beside each test assembly, which records every
+project in the resolved graph and what it depends on, whether or not the code uses it yet. They
+used to call `GetReferencedAssemblies()` instead. That passed vacuously, because the compiler
+drops references the code never uses (#54). A `ProjectReference` from `RulesKernel` to a
+sibling fails them today, before any code calls across it.
 
 `RulesKernel.Testing` lives under `tests/` because it is test-support, not a layer of an
 engine. It is packaged anyway, because an engine built on this kernel needs the same
