@@ -44,6 +44,57 @@ RK0006 is a permanent gap; it was folded into RK0003 before anything shipped
 It is opt-in and deliberately not a
 dependency of `RulesKernel` ([decision 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
+### What adopting it looks like
+
+Expect findings on an existing codebase, and expect the build to fail on the first one.
+
+The diagnostics are warnings, which protects an engine taking a *version bump*. It does not
+protect one adding the package for the first time: a project with `TreatWarningsAsErrors`
+— which this repository sets, and which most disciplined .NET projects set — turns every
+finding into an error immediately.
+
+Measured, not estimated. Pointing it at a real engine of 372 C# files
+([decision 0015](docs/decisions/0015-calibrating-the-rule-set-before-it-freezes.md)) produced
+**17 findings**: 10 RK0001, 5 RK0007, 1 RK0003, 1 RK0004. Adding the package with that
+engine's own settings failed the build after **6 of them**, in the first project compiled —
+the rest were never reported, because compilation stopped.
+
+That is the experience to plan for: not a clean build, and not even a complete list.
+
+Adopt in stages instead. Turn every rule down to `suggestion` first, so one build shows the
+whole picture, then raise them one at a time:
+
+```ini
+# In your engine's own .editorconfig, adopting on an existing codebase.
+# Start here, read the full list, then promote rules to warning one at a time.
+[*.cs]
+dotnet_diagnostic.RK0001.severity = suggestion   # ambient or unpinned entropy
+dotnet_diagnostic.RK0002.severity = suggestion   # ambient clock
+dotnet_diagnostic.RK0003.severity = suggestion   # ambient machine state
+dotnet_diagnostic.RK0004.severity = suggestion   # concurrency
+dotnet_diagnostic.RK0005.severity = suggestion   # replay-unstable hashing
+dotnet_diagnostic.RK0007.severity = suggestion   # unordered materialized into ordered
+```
+
+Test projects are worth a separate decision rather than a global one. Several of the
+findings above were `Guid.NewGuid` for a temporary filename and a `Task.Run` in a test — true
+statements about code whose determinism nobody is claiming. The analyzer is loaded by the
+compiler and cannot know which projects are tests, so that judgement is yours:
+
+```ini
+# In a second .editorconfig beside your test projects: a test may construct
+# exactly what the kernel may not.
+[*.cs]
+dotnet_diagnostic.RK0001.severity = none
+dotnet_diagnostic.RK0004.severity = none
+```
+
+A finding is not automatically a bug. RK0001 on a seeded `System.Random` says the algorithm
+is not guaranteed stable across runtime versions, which matters if a stored replay must
+survive a framework upgrade and does not if it must not
+([decision 0005](docs/decisions/0005-pinned-pseudorandom-algorithm.md)). Read the message; it
+says which of those it means.
+
 Randomness is optional. An engine over a statute or a regulation resolves every question
 without drawing a value, and never references it ([decision 0002](docs/decisions/0002-randomness-is-optional.md)).
 
