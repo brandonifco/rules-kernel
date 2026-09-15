@@ -140,12 +140,18 @@ source. Reflection, aliasing, extension methods and source generation defeat the
 raise the cost of an accident; they are not a proof of absence.
 [ADR 0009](docs/decisions/0009-what-the-source-blacklists-do-not-prove.md) records which
 classes of bypass are known and deliberately unaddressed, and what would change that. The
-module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 113 tests
+module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 127 tests
 that exist to show each check actually fails when it should.
 
 Public API changes to the four packaged assemblies are tracked separately, by
 `Microsoft.CodeAnalysis.PublicApiAnalyzers` — adding or reshaping a public member fails the
-build until the baseline is updated deliberately.
+build until the baseline is updated deliberately. Which half of the baseline a declaration
+sits in is the part that carries the obligation: `PublicAPI.Shipped.txt` is compatibility
+debt owed to consumers, `PublicAPI.Unshipped.txt` is a draft still open for revision. A
+release promotes one into the other, and `tools/release-checks.py` fails a tagged publish
+while any `PublicAPI.Unshipped.txt` is non-empty. It is deliberately not part of
+`validate.sh`: an unshipped baseline is the normal state of a branch in flight, and only a
+release changes that.
 
 ## Where this sits
 

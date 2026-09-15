@@ -33,7 +33,27 @@
     <Product>Rules Kernel</Product>
     <RepositoryUrl>https://github.com/brandonifco/rules-kernel</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <VersionPrefix>0.2.0</VersionPrefix>
+    <!-- main is never a release version. VersionPrefix names the NEXT release; the
+         suffix is what says this tree is not it, so an ordinary `dotnet pack` here
+         produces 0.3.0-dev, which nuget.org has never served and never will.
+
+         This exists because the alternative was tried. main carried VersionPrefix 0.2.0
+         for the entire life of the 0.2.0 release, so every default pack on main produced
+         bytes labelled as a version already on nuget.org, and restoring one of those
+         packs writes a cache entry under the published version that every later restore
+         on the machine then serves instead of the real package. That happened, silently,
+         for hours (scripts/pack-local.sh tells the story). pack-local.sh stays as defence
+         in depth, but it is opt-in, and a footgun whose safety catch is a different
+         command is still a footgun: the DEFAULT command has to be the safe one.
+
+         The release PR clears VersionSuffix, promotes the public API baselines, and is
+         tagged; main then moves to the next prefix with the suffix restored. The cycle is
+         written out in CLAUDE.md, and publish.yml enforces the half a reviewer cannot:
+         it compares the tag to the RESOLVED version, so a tree that still carries a
+         suffix cannot be tagged as a release. See
+         docs/decisions/0012-a-development-tree-is-not-a-release-candidate.md. -->
+    <VersionPrefix>0.3.0</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

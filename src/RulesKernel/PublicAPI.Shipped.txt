@@ -1,1 +1,130 @@
 #nullable enable
+RulesKernel.AssemblyMarker
+RulesKernel.Identity.RandomAlgorithmId
+RulesKernel.Identity.RandomAlgorithmId.Equals(RulesKernel.Identity.RandomAlgorithmId other) -> bool
+RulesKernel.Identity.RandomAlgorithmId.IsValid.get -> bool
+RulesKernel.Identity.RandomAlgorithmId.Name.get -> string!
+RulesKernel.Identity.RandomAlgorithmId.RandomAlgorithmId() -> void
+RulesKernel.Identity.RandomAlgorithmId.RandomAlgorithmId(string! name) -> void
+RulesKernel.Identity.ReplayCompatibilityIdentity
+RulesKernel.Identity.ReplayCompatibilityIdentity.Equals(RulesKernel.Identity.ReplayCompatibilityIdentity? other) -> bool
+RulesKernel.Identity.ReplayCompatibilityIdentity.IsDeterministicWithoutRandomness.get -> bool
+RulesKernel.Identity.ReplayCompatibilityIdentity.RandomAlgorithm.get -> RulesKernel.Identity.RandomAlgorithmId?
+RulesKernel.Identity.ReplayCompatibilityIdentity.ReplayCompatibilityIdentity(RulesKernel.Identity.RulesetVersion ruleset, RulesKernel.Identity.ReplaySchemaVersion replaySchema, System.Collections.Generic.IEnumerable<RulesKernel.Identity.SourceBaselineId>! sourceBaselines, RulesKernel.Identity.RandomAlgorithmId? randomAlgorithm = null) -> void
+RulesKernel.Identity.ReplayCompatibilityIdentity.ReplaySchema.get -> RulesKernel.Identity.ReplaySchemaVersion
+RulesKernel.Identity.ReplayCompatibilityIdentity.Ruleset.get -> RulesKernel.Identity.RulesetVersion
+RulesKernel.Identity.ReplayCompatibilityIdentity.SourceBaselines.get -> System.Collections.Immutable.ImmutableArray<RulesKernel.Identity.SourceBaselineId>
+RulesKernel.Identity.ReplaySchemaVersion
+RulesKernel.Identity.ReplaySchemaVersion.Equals(RulesKernel.Identity.ReplaySchemaVersion other) -> bool
+RulesKernel.Identity.ReplaySchemaVersion.ReplaySchemaVersion() -> void
+RulesKernel.Identity.ReplaySchemaVersion.ReplaySchemaVersion(int version) -> void
+RulesKernel.Identity.ReplaySchemaVersion.Version.get -> int
+RulesKernel.Identity.RulesetVersion
+RulesKernel.Identity.RulesetVersion.Equals(RulesKernel.Identity.RulesetVersion other) -> bool
+RulesKernel.Identity.RulesetVersion.Id.get -> string!
+RulesKernel.Identity.RulesetVersion.IsValid.get -> bool
+RulesKernel.Identity.RulesetVersion.RulesetVersion() -> void
+RulesKernel.Identity.RulesetVersion.RulesetVersion(string! id, int version) -> void
+RulesKernel.Identity.RulesetVersion.Version.get -> int
+RulesKernel.Identity.SourceBaselineId
+RulesKernel.Identity.SourceBaselineId.AsOf.get -> System.DateOnly?
+RulesKernel.Identity.SourceBaselineId.ContentHash.get -> string!
+RulesKernel.Identity.SourceBaselineId.Equals(RulesKernel.Identity.SourceBaselineId other) -> bool
+RulesKernel.Identity.SourceBaselineId.HashDerivation.get -> string!
+RulesKernel.Identity.SourceBaselineId.IsValid.get -> bool
+RulesKernel.Identity.SourceBaselineId.SourceBaselineId() -> void
+RulesKernel.Identity.SourceBaselineId.SourceBaselineId(string! sourceId, string! contentHash, string! hashDerivation, System.DateOnly? asOf = null) -> void
+RulesKernel.Identity.SourceBaselineId.SourceId.get -> string!
+RulesKernel.Provenance.SourceLocator
+RulesKernel.Provenance.SourceLocator.Citation.get -> string!
+RulesKernel.Provenance.SourceLocator.Equals(RulesKernel.Provenance.SourceLocator other) -> bool
+RulesKernel.Provenance.SourceLocator.IsValid.get -> bool
+RulesKernel.Provenance.SourceLocator.SourceId.get -> string!
+RulesKernel.Provenance.SourceLocator.SourceLocator() -> void
+RulesKernel.Provenance.SourceLocator.SourceLocator(string! sourceId, string! citation) -> void
+RulesKernel.Resolution.Resolution<T>
+RulesKernel.Resolution.Resolution<T>.IsResolved.get -> bool
+RulesKernel.Resolution.Resolution<T>.Match<TResult>(System.Func<T, TResult>! onResolved, System.Func<RulesKernel.Resolution.UnresolvedResult!, TResult>! onUnresolved) -> TResult
+RulesKernel.Resolution.Resolution<T>.Resolution(RulesKernel.Resolution.Resolution<T>! original) -> void
+RulesKernel.Resolution.Resolution<T>.Resolved
+RulesKernel.Resolution.Resolution<T>.Resolved.Deconstruct(out T value) -> void
+RulesKernel.Resolution.Resolution<T>.Resolved.Equals(RulesKernel.Resolution.Resolution<T>.Resolved? other) -> bool
+RulesKernel.Resolution.Resolution<T>.Resolved.Value.get -> T
+RulesKernel.Resolution.Resolution<T>.Unresolved
+RulesKernel.Resolution.Resolution<T>.Unresolved.Deconstruct(out RulesKernel.Resolution.UnresolvedResult! result) -> void
+RulesKernel.Resolution.Resolution<T>.Unresolved.Equals(RulesKernel.Resolution.Resolution<T>.Unresolved? other) -> bool
+RulesKernel.Resolution.Resolution<T>.Unresolved.Result.get -> RulesKernel.Resolution.UnresolvedResult!
+RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedReason.MissingRulesData = 4 -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedReason.OutsideCurrentScope = 2 -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedReason.RequiresInterpretation = 1 -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedReason.UnsupportedInteraction = 3 -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedReason.UnsupportedRule = 0 -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedResult
+RulesKernel.Resolution.UnresolvedResult.<Clone>$() -> RulesKernel.Resolution.UnresolvedResult!
+RulesKernel.Resolution.UnresolvedResult.Attempted.get -> string!
+RulesKernel.Resolution.UnresolvedResult.Equals(RulesKernel.Resolution.UnresolvedResult? other) -> bool
+RulesKernel.Resolution.UnresolvedResult.Locator.get -> RulesKernel.Provenance.SourceLocator
+RulesKernel.Resolution.UnresolvedResult.Reason.get -> RulesKernel.Resolution.UnresolvedReason
+RulesKernel.Resolution.UnresolvedResult.UnresolvedResult(RulesKernel.Resolution.UnresolvedReason reason, string! attempted, RulesKernel.Provenance.SourceLocator locator) -> void
+abstract RulesKernel.Resolution.Resolution<T>.<Clone>$() -> RulesKernel.Resolution.Resolution<T>!
+override RulesKernel.Identity.RandomAlgorithmId.GetHashCode() -> int
+override RulesKernel.Identity.RandomAlgorithmId.ToString() -> string!
+override RulesKernel.Identity.ReplayCompatibilityIdentity.Equals(object? obj) -> bool
+override RulesKernel.Identity.ReplayCompatibilityIdentity.GetHashCode() -> int
+override RulesKernel.Identity.ReplaySchemaVersion.GetHashCode() -> int
+override RulesKernel.Identity.RulesetVersion.GetHashCode() -> int
+override RulesKernel.Identity.SourceBaselineId.GetHashCode() -> int
+override RulesKernel.Identity.SourceBaselineId.ToString() -> string!
+override RulesKernel.Provenance.SourceLocator.GetHashCode() -> int
+override RulesKernel.Provenance.SourceLocator.ToString() -> string!
+override RulesKernel.Resolution.Resolution<T>.Equals(object? obj) -> bool
+override RulesKernel.Resolution.Resolution<T>.GetHashCode() -> int
+override RulesKernel.Resolution.Resolution<T>.Resolved.<Clone>$() -> RulesKernel.Resolution.Resolution<T>.Resolved!
+override RulesKernel.Resolution.Resolution<T>.Resolved.Equals(object? obj) -> bool
+override RulesKernel.Resolution.Resolution<T>.Resolved.GetHashCode() -> int
+override RulesKernel.Resolution.Resolution<T>.Resolved.ToString() -> string!
+override RulesKernel.Resolution.Resolution<T>.ToString() -> string!
+override RulesKernel.Resolution.Resolution<T>.Unresolved.<Clone>$() -> RulesKernel.Resolution.Resolution<T>.Unresolved!
+override RulesKernel.Resolution.Resolution<T>.Unresolved.Equals(object? obj) -> bool
+override RulesKernel.Resolution.Resolution<T>.Unresolved.GetHashCode() -> int
+override RulesKernel.Resolution.Resolution<T>.Unresolved.ToString() -> string!
+override RulesKernel.Resolution.UnresolvedResult.Equals(object? obj) -> bool
+override RulesKernel.Resolution.UnresolvedResult.GetHashCode() -> int
+override RulesKernel.Resolution.UnresolvedResult.ToString() -> string!
+override sealed RulesKernel.Resolution.Resolution<T>.Resolved.Equals(RulesKernel.Resolution.Resolution<T>? other) -> bool
+override sealed RulesKernel.Resolution.Resolution<T>.Unresolved.Equals(RulesKernel.Resolution.Resolution<T>? other) -> bool
+static RulesKernel.AssemblyMarker.Assembly.get -> System.Reflection.Assembly!
+static RulesKernel.Identity.RandomAlgorithmId.operator !=(RulesKernel.Identity.RandomAlgorithmId left, RulesKernel.Identity.RandomAlgorithmId right) -> bool
+static RulesKernel.Identity.RandomAlgorithmId.operator ==(RulesKernel.Identity.RandomAlgorithmId left, RulesKernel.Identity.RandomAlgorithmId right) -> bool
+static RulesKernel.Identity.ReplayCompatibilityIdentity.operator !=(RulesKernel.Identity.ReplayCompatibilityIdentity? left, RulesKernel.Identity.ReplayCompatibilityIdentity? right) -> bool
+static RulesKernel.Identity.ReplayCompatibilityIdentity.operator ==(RulesKernel.Identity.ReplayCompatibilityIdentity? left, RulesKernel.Identity.ReplayCompatibilityIdentity? right) -> bool
+static RulesKernel.Identity.ReplaySchemaVersion.operator !=(RulesKernel.Identity.ReplaySchemaVersion left, RulesKernel.Identity.ReplaySchemaVersion right) -> bool
+static RulesKernel.Identity.ReplaySchemaVersion.operator ==(RulesKernel.Identity.ReplaySchemaVersion left, RulesKernel.Identity.ReplaySchemaVersion right) -> bool
+static RulesKernel.Identity.RulesetVersion.operator !=(RulesKernel.Identity.RulesetVersion left, RulesKernel.Identity.RulesetVersion right) -> bool
+static RulesKernel.Identity.RulesetVersion.operator ==(RulesKernel.Identity.RulesetVersion left, RulesKernel.Identity.RulesetVersion right) -> bool
+static RulesKernel.Identity.SourceBaselineId.operator !=(RulesKernel.Identity.SourceBaselineId left, RulesKernel.Identity.SourceBaselineId right) -> bool
+static RulesKernel.Identity.SourceBaselineId.operator ==(RulesKernel.Identity.SourceBaselineId left, RulesKernel.Identity.SourceBaselineId right) -> bool
+static RulesKernel.Provenance.SourceLocator.operator !=(RulesKernel.Provenance.SourceLocator left, RulesKernel.Provenance.SourceLocator right) -> bool
+static RulesKernel.Provenance.SourceLocator.operator ==(RulesKernel.Provenance.SourceLocator left, RulesKernel.Provenance.SourceLocator right) -> bool
+static RulesKernel.Resolution.Resolution<T>.FromUnresolved(RulesKernel.Resolution.UnresolvedResult! result) -> RulesKernel.Resolution.Resolution<T>!
+static RulesKernel.Resolution.Resolution<T>.FromValue(T value) -> RulesKernel.Resolution.Resolution<T>!
+static RulesKernel.Resolution.Resolution<T>.Resolved.operator !=(RulesKernel.Resolution.Resolution<T>.Resolved? left, RulesKernel.Resolution.Resolution<T>.Resolved? right) -> bool
+static RulesKernel.Resolution.Resolution<T>.Resolved.operator ==(RulesKernel.Resolution.Resolution<T>.Resolved? left, RulesKernel.Resolution.Resolution<T>.Resolved? right) -> bool
+static RulesKernel.Resolution.Resolution<T>.Unresolved.operator !=(RulesKernel.Resolution.Resolution<T>.Unresolved? left, RulesKernel.Resolution.Resolution<T>.Unresolved? right) -> bool
+static RulesKernel.Resolution.Resolution<T>.Unresolved.operator ==(RulesKernel.Resolution.Resolution<T>.Unresolved? left, RulesKernel.Resolution.Resolution<T>.Unresolved? right) -> bool
+static RulesKernel.Resolution.Resolution<T>.operator !=(RulesKernel.Resolution.Resolution<T>? left, RulesKernel.Resolution.Resolution<T>? right) -> bool
+static RulesKernel.Resolution.Resolution<T>.operator ==(RulesKernel.Resolution.Resolution<T>? left, RulesKernel.Resolution.Resolution<T>? right) -> bool
+static RulesKernel.Resolution.UnresolvedResult.operator !=(RulesKernel.Resolution.UnresolvedResult? left, RulesKernel.Resolution.UnresolvedResult? right) -> bool
+static RulesKernel.Resolution.UnresolvedResult.operator ==(RulesKernel.Resolution.UnresolvedResult? left, RulesKernel.Resolution.UnresolvedResult? right) -> bool
+static readonly RulesKernel.Identity.RandomAlgorithmId.Pcg32SetSeq64XshRr32 -> RulesKernel.Identity.RandomAlgorithmId
+virtual RulesKernel.Resolution.Resolution<T>.EqualityContract.get -> System.Type!
+virtual RulesKernel.Resolution.Resolution<T>.Equals(RulesKernel.Resolution.Resolution<T>? other) -> bool
+virtual RulesKernel.Resolution.Resolution<T>.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~override RulesKernel.Identity.RandomAlgorithmId.Equals(object obj) -> bool
+~override RulesKernel.Identity.ReplaySchemaVersion.Equals(object obj) -> bool
+~override RulesKernel.Identity.ReplaySchemaVersion.ToString() -> string
+~override RulesKernel.Identity.RulesetVersion.Equals(object obj) -> bool
+~override RulesKernel.Identity.RulesetVersion.ToString() -> string
+~override RulesKernel.Identity.SourceBaselineId.Equals(object obj) -> bool
+~override RulesKernel.Provenance.SourceLocator.Equals(object obj) -> bool

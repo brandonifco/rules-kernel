@@ -146,9 +146,15 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
 
         var lookup = new Lookup(types, members);
 
+        // MethodReference is here because a banned member captured as a delegate is never an
+        // Invocation: `Func<Guid> f = Guid.NewGuid;` binds the same symbol a call would and
+        // ran clean past the first four kinds. That is the semantic indirection
+        // docs/decisions/0009 says only symbol resolution closes, so missing it left open an
+        // instance of the class this package exists to close.
         context.RegisterOperationAction(
             lookup.Inspect,
             OperationKind.Invocation,
+            OperationKind.MethodReference,
             OperationKind.ObjectCreation,
             OperationKind.PropertyReference,
             OperationKind.FieldReference);
@@ -221,6 +227,7 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         private static ISymbol? SymbolOf(IOperation? operation) => operation switch
         {
             IInvocationOperation invocation => invocation.TargetMethod,
+            IMethodReferenceOperation method => method.Method,
             IObjectCreationOperation creation => creation.Constructor,
             IPropertyReferenceOperation property => property.Property,
             IFieldReferenceOperation field => field.Field,
@@ -231,6 +238,15 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         private static IOperation? InstanceOf(IOperation operation) => operation switch
         {
             IInvocationOperation invocation => invocation.Instance,
+
+            // A method group has a receiver just as a call does, so it yields on exactly the
+            // terms above: `System.Random.Shared.Next` is the property reference and the
+            // method reference over one banned type, and reporting both would put two
+            // overlapping squiggles on one expression. A method group on a field of a banned
+            // type -- `_random.Next` -- is not that shape and never was: the field's own
+            // symbol belongs to the consuming type, so the receiver does not match and the
+            // method reference reports once on its own.
+            IMethodReferenceOperation method => method.Instance,
             IPropertyReferenceOperation property => property.Instance,
             IFieldReferenceOperation field => field.Instance,
             _ => null,

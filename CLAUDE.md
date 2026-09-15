@@ -66,12 +66,42 @@ Run the gate. There is one:
   `default(T)`, bypassing its constructor. Either validate at every gate that consumes it,
   or expose `IsValid` and reject it where it matters. Both patterns are in use here.
 
+## The release cycle
+
+`main` is never a release version. It carries the **next** version with a prerelease
+suffix — `VersionPrefix 0.3.0` + `VersionSuffix dev`, resolving to `0.3.0-dev` — so an
+ordinary `dotnet pack` on a development tree produces something nuget.org has never served
+and never will. The alternative was tried: `main` sat at `0.2.0` for the whole life of the
+0.2.0 release, and a local pack of that tree shadowed the published package for hours
+([ADR 0012](docs/decisions/0012-a-development-tree-is-not-a-release-candidate.md)).
+
+Cutting a release, in one reviewed PR:
+
+1. Clear `VersionSuffix` and set `VersionPrefix` to the version being released.
+2. Promote every `PublicAPI.Unshipped.txt` into its `PublicAPI.Shipped.txt`. What is about
+   to be published is shipped API by definition, and `tools/release-checks.py` fails the
+   publish while any unshipped baseline still holds a declaration.
+3. `./scripts/validate.sh full`, then merge, then tag that commit `vX.Y.Z` and push the tag.
+4. Immediately move `main` to the next version, suffix restored.
+
+Do not shortcut step 4. Between the tag and that commit, `main` resolves to a version that
+has been published — the exact state this cycle exists to make unreachable.
+
+`publish.yml` enforces what a reviewer cannot: it asks MSBuild for the **resolved**
+`PackageVersion` of every packable project and requires exact equality with the tag. A
+prefix comparison is not enough — a tree resolving to `0.3.0-dev` matches the prefix `0.3.0`
+and would publish a package whose version disagrees with its own tag.
+
 ## Packing locally
 
 Use `./scripts/pack-local.sh`. Never pack with the repository's own `VersionPrefix` and
 restore from the output folder: that writes a cache entry under a version number that may
 later be published, and every restore on the machine then serves the local bytes under the
 released version, silently. It has already happened once.
+
+The development suffix above removes most of that hazard; this removes the rest. Two packs
+of `0.3.0-dev` are two different builds under one version — the same failure in miniature —
+and `pack-local.sh` timestamps each one so they cannot shadow each other either.
 
 ## Adding a project
 
