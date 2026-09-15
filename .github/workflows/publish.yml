@@ -90,6 +90,21 @@ jobs:
           CI: "true"
         run: ./scripts/validate.sh full
 
+      # The release-only half of the gate, and the only place it runs. A non-empty
+      # PublicAPI.Unshipped.txt is the normal, correct state of a branch in flight, so this
+      # cannot live in validate.sh or in repo-checks.py without failing ordinary
+      # development -- tools/release-checks.py's module docstring says so at length. At a
+      # tag the obligation inverts: everything being packed is about to become API a
+      # consumer can compile against, so none of it may still be classified as unshipped.
+      # v0.2.0 went out with all 158 declarations of the three released packages still in
+      # Unshipped, which is why this step exists.
+      #
+      # It runs here in `validate`, which finishes before `publish` starts, so it is
+      # satisfied before anything is built or packed -- and it stays out of the job that
+      # holds `id-token: write`, for the reason the header comment gives.
+      - name: Require every public API baseline to be promoted
+        run: tools/release-checks.py
+
   publish:
     needs: validate
     runs-on: ubuntu-24.04
