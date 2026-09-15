@@ -8,16 +8,35 @@ name: pcg-vectors
 # As docs/decisions/0005 puts it: the vectors are the replay contract, and a wrong vector
 # does not fail -- it passes, forever, until something actually re-derives it and looks.
 #
-# This workflow is that "something": a weekly re-derivation, plus an on-demand one. It
-# needs network (to fetch the pinned upstream files), a C compiler, and sha256sum -- all
+# This workflow is that "something": a weekly re-derivation, an on-demand one, and one on
+# every pull request or push that touches the vectors, the recipe, or the generator they pin.
+# It needs network (to fetch the pinned upstream files), a C compiler, and sha256sum -- all
 # present on ubuntu-24.04's default image without extra setup.
 #
-# This workflow does NOT gate merges or publishing. It reports drift; it does not block
-# anything, and treating an upstream-fetch failure (network hiccup, GitHub raw outage) as
-# a merge-blocking condition would make the gate flaky for a reason that has nothing to do
-# with the change being merged. A failure here means "go look", not "revert".
+# The change trigger exists because weekly was the wrong half of "a wrong vector passes
+# forever" (#67): the dangerous edit is a vector rewritten to agree with a broken generator,
+# and a weekly run reports it only after it has merged. On a pull request that touches those
+# files, a failure is now visible before the merge.
+#
+# It is still NOT a required check. Treating an upstream-fetch failure (network hiccup,
+# GitHub raw outage) as merge-blocking would make every such PR flaky for a reason unrelated
+# to it. A red run here means "go look before merging", not an automatic block.
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/RulesKernel.Randomness/**"
+      - "tests/RulesKernel.Randomness.Tests/Pcg32ReferenceVectors.cs"
+      - "tools/pcg-vectors/**"
+      - ".github/workflows/pcg-vectors.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/RulesKernel.Randomness/**"
+      - "tests/RulesKernel.Randomness.Tests/Pcg32ReferenceVectors.cs"
+      - "tools/pcg-vectors/**"
+      - ".github/workflows/pcg-vectors.yml"
   schedule:
     # Weekly. Cron is UTC; day-of-week 1 = Monday.
     - cron: "17 6 * * 1"
