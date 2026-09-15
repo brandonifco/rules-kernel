@@ -2,11 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/RulesKernel/RulesKernel.csproj" />
     <Project Path="src/RulesKernel.Randomness/RulesKernel.Randomness.csproj" />
+    <Project Path="src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RulesKernel.Testing/RulesKernel.Testing.csproj" />
     <Project Path="tests/RulesKernel.Tests/RulesKernel.Tests.csproj" />
     <Project Path="tests/RulesKernel.Randomness.Tests/RulesKernel.Randomness.Tests.csproj" />
+    <Project Path="tests/RulesKernel.Analyzers.Tests/RulesKernel.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/probes/">
     <Project Path="probes/RegulatoryProbe.Tests/RegulatoryProbe.Tests.csproj" />

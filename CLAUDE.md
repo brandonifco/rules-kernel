@@ -36,7 +36,7 @@ vectors, or the meaning of an identity component breaks every engine downstream.
 record in `docs/decisions/`, not a commit message.
 
 Half of this is now mechanical: `Microsoft.CodeAnalysis.PublicApiAnalyzers` tracks the
-public surface of the three packaged assemblies, so reshaping a public member fails the
+public surface of the four packaged assemblies, so reshaping a public member fails the
 build until you update `PublicAPI.Unshipped.txt` deliberately. That forces the change to be
 noticed; it cannot force the decision record. Three source-breaking changes shipped
 unrecorded before this existed, and the analyzer named all three on its first run.

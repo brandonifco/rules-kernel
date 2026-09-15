@@ -12,6 +12,9 @@
     <!-- Fails the build on an undeclared change to a packaged assembly's public surface;
          see CLAUDE.md principle 5. Analyzer-only: no runtime dependency to pin. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
+    <!-- The oldest Roslyn RulesKernel.Analyzers must load under, which is SDK 8.0.x
+         (Roslyn 4.8). Raising this drops consumers on older SDKs; see docs/decisions/0011. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
   </ItemGroup>
 
 </Project>

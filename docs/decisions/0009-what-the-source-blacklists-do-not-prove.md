@@ -65,9 +65,9 @@ obligation that nothing checks.
 ## What would change this
 
 - A determinism analyzer over the symbol graph, which would close these classes rather than
-  enumerate them. Whether the kernel should ship one, and to whom, is settled separately by
-  [0010](0010-enforcement-stops-at-the-package-boundary.md): not today, and never inside
-  `RulesKernel` itself.
+  enumerate them. [0011](0011-shipping-a-determinism-analyzer.md) ships exactly that, as an
+  opt-in package — but it analyses a *consumer's* code. These checks remain this
+  repository's own net, and remain textual, so everything above still holds here.
 - An actual accident of the kind the blacklist misses. The bypasses above are all
   deliberate acts. If one of them ever happens by accident, that is evidence the cheap net
   is in the wrong place, and this decision should be revisited rather than patched.

@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Opt-in by design, and deliberately NOT a dependency of RulesKernel. A Roslyn
+       analyzer pins Microsoft.CodeAnalysis.CSharp, which ties to the consumer's compiler;
+       hanging that on the dependency-free floor would re-create the SDK lockout that
+       docs/decisions/0008 exists to end. An engine that wants the diagnostics references
+       this package; one that does not is unaffected. See docs/decisions/0011. -->
+  <!-- netstandard2.0 is not a choice: it is what Roslyn loads analyzers as. The repo-wide
+       net10.0 default in Directory.Build.props would produce an analyzer no compiler
+       could load. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>RulesKernel.Analyzers</RootNamespace>
+    <PackageId>RulesKernel.Analyzers</PackageId>
+    <Description>Compile-time diagnostics for ambient non-determinism: entropy, clock, environment and concurrency.</Description>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- NU5128: this package ships no lib/ folder on purpose; an analyzer is a build
+         asset, not a reference. The absence is the design, not an omission. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <!-- The analyzer travels in analyzers/dotnet/cs, never lib/: a consumer must not be able
+       to reference these types at runtime. DevelopmentDependency keeps it out of the
+       transitive graph of anything that depends on the consumer. -->
+  <PropertyGroup>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- The repo-wide IncludeSymbols default would build a snupkg with nothing in it, which
+         fails as NU5017. A symbol package pairs with lib/, and this package ships none. -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+
+  <!-- Release tracking: RS2008 fails the build on a rule that is not declared here, which
+       makes adding a diagnostic ID a deliberate act rather than a side effect. -->
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
+  <!-- Pinned to the OLDEST Roslyn this analyzer must load under, not the newest available.
+       SRD_Combat pins SDK 8.0.129, whose compiler is Roslyn 4.8; an analyzer built against
+       a newer Microsoft.CodeAnalysis would fail to load there. Newer compilers load a
+       4.8-targeted analyzer without complaint, so the low pin costs nothing. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Consistent with the other packaged assemblies (see Directory.Build.props): an
+       undeclared change to the surface is a build error. The versioned contract a consumer
+       actually depends on is the diagnostic IDs, which this cannot check; docs/decisions/0011
+       records that they are permanent. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

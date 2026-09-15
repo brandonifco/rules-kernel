@@ -2,6 +2,11 @@
 
 ## Status
 
+Superseded by [0011](0011-shipping-a-determinism-analyzer.md) — 2026-09-14. The analyzer was
+built. The half of this record that survives is its shape: `RulesKernel.Analyzers` is a
+separate opt-in package, never a dependency of `RulesKernel`, for the reasons below. What
+0011 overturns is the conclusion that it should not be built yet.
+
 Accepted — 2026-09-14. No consumer-facing enforcement ships. If it is ever built, it is a
 separate opt-in package.
 

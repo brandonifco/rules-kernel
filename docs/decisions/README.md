@@ -22,4 +22,5 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0007](0007-a-baseline-says-what-its-hash-covers.md) | A baseline says what its hash covers |
 | [0008](0008-multi-targeting-so-adoption-is-not-an-upgrade.md) | Multi-targeting, so adoption is not a framework upgrade |
 | [0009](0009-what-the-source-blacklists-do-not-prove.md) | What the source blacklists do not prove |
-| [0010](0010-enforcement-stops-at-the-package-boundary.md) | Enforcement stops at the package boundary |
+| [0010](0010-enforcement-stops-at-the-package-boundary.md) | Enforcement stops at the package boundary (superseded by 0011) |
+| [0011](0011-shipping-a-determinism-analyzer.md) | Shipping a determinism analyzer |

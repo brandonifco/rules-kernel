@@ -116,6 +116,12 @@ class Fixture:
                      packable=False,
                      project_refs=["../../src/RulesKernel.Randomness/RulesKernel.Randomness.csproj",
                                    "../RulesKernel.Testing/RulesKernel.Testing.csproj"])
+        # Referenced by nothing and referencing nothing: the analyzer is a build asset a
+        # consumer opts into, not a layer of the stack. See docs/decisions/0011.
+        self.project("src/RulesKernel.Analyzers", "RulesKernel.Analyzers", packable=True)
+        self.project("tests/RulesKernel.Analyzers.Tests", "RulesKernel.Analyzers.Tests",
+                     packable=False,
+                     project_refs=["../../src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj"])
         self.project("probes/RegulatoryProbe.Tests", "RegulatoryProbe.Tests", packable=False,
                      project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
         self.write_solution()
@@ -297,7 +303,8 @@ public static class Offender
     def test_packaged_scope_is_read_from_disk_not_from_a_list(self) -> None:
         packaged = rc.packaged_projects(self.root)
         self.assertEqual(
-            {"RulesKernel", "RulesKernel.Randomness", "RulesKernel.Testing"},
+            {"RulesKernel", "RulesKernel.Randomness", "RulesKernel.Testing",
+             "RulesKernel.Analyzers"},
             set(packaged),
         )
 
