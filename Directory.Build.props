@@ -52,8 +52,8 @@
          it compares the tag to the RESOLVED version, so a tree that still carries a
          suffix cannot be tagged as a release. See
          docs/decisions/0012-a-development-tree-is-not-a-release-candidate.md. -->
-    <VersionPrefix>0.3.0</VersionPrefix>
-    <VersionSuffix></VersionSuffix>
+    <VersionPrefix>0.4.0</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
