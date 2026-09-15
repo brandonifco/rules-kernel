@@ -113,6 +113,8 @@ ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
     # A probe: proves the kernel is usable by something that is not a game. Its
     # reference set is deliberately just the kernel -- see probes/README.md.
     "RegulatoryProbe.Tests": {"RulesKernel"},
+    # A second probe, over a regulation whose text changes on dates it states itself.
+    "Part107Probe.Tests": {"RulesKernel"},
     # README's C# blocks, compiled. The kernel alone, because that is all README shows.
     "RulesKernel.Documentation.Tests": {"RulesKernel"},
 }
@@ -148,6 +150,7 @@ PROJECT_DIRS: dict[str, str] = {
     "RulesKernel.Randomness.Tests": "tests",
     "RulesKernel.Analyzers.Tests": "tests",
     "RegulatoryProbe.Tests": "probes",
+    "Part107Probe.Tests": "probes",
     "RulesKernel.Documentation.Tests": "tests",
 }
 
