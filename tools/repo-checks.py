@@ -91,9 +91,14 @@ BINARY_SUFFIXES = {
 ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
     "RulesKernel": set(),
     "RulesKernel.Randomness": {"RulesKernel"},
+    # No reference to RulesKernel, deliberately. The analyzer inspects a consumer's symbols;
+    # it has no use for the kernel's types, and an edge here would put a Roslyn pin in the
+    # graph of anything that took it. See docs/decisions/0011.
+    "RulesKernel.Analyzers": set(),
     "RulesKernel.Testing": {"RulesKernel.Randomness"},
     "RulesKernel.Tests": {"RulesKernel"},
     "RulesKernel.Randomness.Tests": {"RulesKernel.Randomness", "RulesKernel.Testing"},
+    "RulesKernel.Analyzers.Tests": {"RulesKernel.Analyzers"},
     # A probe: proves the kernel is usable by something that is not a game. Its
     # reference set is deliberately just the kernel -- see probes/README.md.
     "RegulatoryProbe.Tests": {"RulesKernel"},
@@ -102,9 +107,11 @@ ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
 PROJECT_DIRS: dict[str, str] = {
     "RulesKernel": "src",
     "RulesKernel.Randomness": "src",
+    "RulesKernel.Analyzers": "src",
     "RulesKernel.Testing": "tests",
     "RulesKernel.Tests": "tests",
     "RulesKernel.Randomness.Tests": "tests",
+    "RulesKernel.Analyzers.Tests": "tests",
     "RegulatoryProbe.Tests": "probes",
 }
 

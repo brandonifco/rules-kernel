@@ -8,9 +8,10 @@ history — on any machine, on any run. The kernel does not make that true of an
 owns no execution, no persistence and no mechanics. What it provides is the part an engine
 cannot safely invent for itself: identity you can compare, provenance you can check, a
 replay-stable generator, and a way to say "I cannot resolve this" that a caller must handle.
-Whether an engine honours the contract is the engine's business, and its own checks':
-no check in this repository follows the package to a consumer, by decision
-([ADR 0010](docs/decisions/0010-enforcement-stops-at-the-package-boundary.md)).
+Whether an engine honours the contract is the engine's business, and its own checks' —
+with one exception an engine opts into: `RulesKernel.Analyzers` carries the determinism
+diagnostics into the consumer's own build
+([ADR 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
 Where it cannot resolve a rule, an engine built on these primitives
 says so explicitly instead of guessing.
@@ -32,6 +33,12 @@ no page numbers, no subject-matter vocabulary of any kind.
 | `RulesKernel` | identity, provenance, resolution | nothing |
 | `RulesKernel.Randomness` | PCG32, bias-free bounded draws | `RulesKernel` |
 | `RulesKernel.Testing` | scripted test doubles | `RulesKernel.Randomness` |
+| `RulesKernel.Analyzers` | compile-time diagnostics for ambient non-determinism | nothing |
+
+`RulesKernel.Analyzers` is a build asset, not a reference: it ships no `lib/`, depends on
+nothing, and an engine that takes it gets RK0001-RK0004 against ambient entropy, clock,
+environment and concurrency in its *own* code. It is opt-in and deliberately not a
+dependency of `RulesKernel` ([decision 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
 Randomness is optional. An engine over a statute or a regulation resolves every question
 without drawing a value, and never references it ([decision 0002](docs/decisions/0002-randomness-is-optional.md)).
@@ -131,7 +138,7 @@ classes of bypass are known and deliberately unaddressed, and what would change 
 module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 105 tests
 that exist to show each check actually fails when it should.
 
-Public API changes to the three packaged assemblies are tracked separately, by
+Public API changes to the four packaged assemblies are tracked separately, by
 `Microsoft.CodeAnalysis.PublicApiAnalyzers` — adding or reshaping a public member fails the
 build until the baseline is updated deliberately.
 

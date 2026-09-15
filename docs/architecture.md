@@ -14,7 +14,14 @@ RulesKernel              identity, provenance, resolution     depends on nothing
 RulesKernel.Randomness   PCG32, bias-free bounded draws       depends on RulesKernel
       ^
 RulesKernel.Testing      scripted test doubles                depends on RulesKernel.Randomness
+
+RulesKernel.Analyzers    RK0001-RK0004 over a consumer's code depends on nothing
 ```
+
+`RulesKernel.Analyzers` stands outside the stack rather than on top of it. It references no
+kernel type, and nothing references it: it is a build asset a consuming engine opts into,
+and an edge either way would put a Roslyn pin into a graph that must stay loadable on the
+oldest SDK the kernel supports ([0011](decisions/0011-shipping-a-determinism-analyzer.md)).
 
 Nothing points upward. `tools/repo-checks.py --only layering` enforces this by reading the
 declared `ProjectReference` graph out of the csproj files, and it fails on any project
