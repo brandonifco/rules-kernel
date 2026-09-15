@@ -84,6 +84,12 @@ Cutting a release, in one reviewed PR:
 3. `./scripts/validate.sh full`, then merge, then tag that commit `vX.Y.Z` and push the tag.
 4. Immediately move `main` to the next version, suffix restored.
 
+If the tag does not follow the merge — a last check fails, a calibration finds something —
+put `VersionSuffix` back to `dev` on `main` straight away, keeping the same `VersionPrefix`.
+The release has not shipped, so it is still the next one; a version number is not spent by
+preparing to release it. See
+[ADR 0017](docs/decisions/0017-a-held-tag-returns-main-to-a-development-version.md).
+
 Do not shortcut step 4. Between the tag and that commit, `main` resolves to a version that
 has been published — the exact state this cycle exists to make unreachable.
 
