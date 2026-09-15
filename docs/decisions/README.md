@@ -25,3 +25,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0010](0010-enforcement-stops-at-the-package-boundary.md) | Enforcement stops at the package boundary (superseded by 0011) |
 | [0011](0011-shipping-a-determinism-analyzer.md) | Shipping a determinism analyzer |
 | [0012](0012-a-development-tree-is-not-a-release-candidate.md) | A development tree is not a release candidate |
+| [0013](0013-the-analyzer-ships-when-its-rules-cover-what-it-claims.md) | The analyzer ships when its rules cover what it claims |
