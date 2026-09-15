@@ -62,23 +62,10 @@ skipped() { printf '%sskip%s %s (depends on a step that failed)\n' "$YEL" "$OFF"
 #      (1) is vacuously satisfied.
 # Neither question is answerable from "dotnet test exited 0", which is the entire point.
 expected_test_projects() {
-  python3 - "$REPO_ROOT" <<'PYEXPECT'
-import pathlib
-import re
-import sys
-
-root = pathlib.Path(sys.argv[1])
-IGNORED = {"bin", "obj", ".git", ".dotnet", ".venv", "artifacts", "TestResults", "worktrees"}
-
-count = 0
-for csproj in sorted(root.rglob("*.csproj")):
-    if any(part in IGNORED for part in csproj.parts):
-        continue
-    text = csproj.read_text(encoding="utf-8", errors="replace")
-    if re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.IGNORECASE):
-        count += 1
-print(count)
-PYEXPECT
+  # Extracted to tools/ so it can be tested: this guard's own correctness is the point, and
+  # comparing absolute path parts once made it count zero whenever the checkout itself sat
+  # under a directory named like build output -- which is what a git worktree does.
+  tools/expected-test-projects.py "$REPO_ROOT"
 }
 
 assert_tests_ran() {

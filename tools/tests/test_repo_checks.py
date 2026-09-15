@@ -88,8 +88,14 @@ class Fixture:
     its contents.
     """
 
-    def __init__(self) -> None:
-        self.root = Path(tempfile.mkdtemp(prefix="repo-checks-test-"))
+    def __init__(self, root: Path | None = None) -> None:
+        # `root` lets a test choose WHERE the checkout sits, which is itself a thing the
+        # checks must be indifferent to.
+        if root is None:
+            self.root = Path(tempfile.mkdtemp(prefix="repo-checks-test-"))
+        else:
+            root.mkdir(parents=True, exist_ok=True)
+            self.root = root
         self.write("README.md", "# Fixture\n\nSee [CLAUDE.md](CLAUDE.md).\n")
         self.write("CLAUDE.md", "# Fixture contract\n")
         self.write("global.json", '{\n  "sdk": {\n    "version": "10.0.112"\n  }\n}\n')
@@ -232,6 +238,36 @@ class FixtureIsCleanTests(CheckTestCase):
             with self.subTest(check=name):
                 self.assertEqual([], self.failures(check), name)
                 self.assertGreater(check(self.root).examined, 0, f"{name} examined nothing")
+
+
+# ------------------------------------------------- where the checkout itself happens to sit
+
+
+class TheCheckoutLocationIsNotPartOfTheAnswerTests(unittest.TestCase):
+    """A clone under a directory named like build output must not silently skip everything.
+
+    Every IGNORED_PARTS comparison is against the path relative to the root being walked.
+    Testing absolute parts made the location of the checkout part of the answer: a clone in
+    ~/packages would have had every file skipped, and every check would have examined
+    nothing. The same shape, with `worktrees`, really did zero scripts/validate.sh's
+    test-project count when it ran from a git worktree -- see tools/expected-test-projects.py.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def test_a_root_named_like_build_output_still_finds_its_projects(self) -> None:
+        for ignored in sorted(rc.IGNORED_PARTS):
+            with self.subTest(directory=ignored):
+                fixture = Fixture(self.tmp / ignored / "repo")
+                self.addCleanup(fixture.cleanup)
+
+                self.assertEqual(
+                    {"RulesKernel", "RulesKernel.Randomness", "RulesKernel.Testing",
+                     "RulesKernel.Analyzers"},
+                    set(rc.packaged_projects(fixture.root)),
+                    f"a checkout under a directory named {ignored!r} found no projects")
 
 
 # --------------------------------------------------------------- the framework commitment
