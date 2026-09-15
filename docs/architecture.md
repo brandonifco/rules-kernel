@@ -95,13 +95,18 @@ collection is materialized into an ordered one without an explicit sort — a `D
 `HashSet` walked into a `List<T>`, a `StringBuilder`, an array or a `ToList()`, with no
 `OrderBy` in between ([ADR 0014](decisions/0014-warning-where-unordered-becomes-ordered.md)).
 Two limits on that, both deliberate. It is a warning in an **opt-in** package analysing a
-**consumer's** code, so it is not a gate on this repository at all. And it stays silent
+**consumer's** code, and no project here references it. And it stays silent
 wherever it cannot tell — a call it cannot see into, an interface-typed source, a LINQ
 operator it does not model — because a false positive costs a consumer more than a false
 negative. ADR 0014 lists the known false negatives.
 
-So unordered iteration inside *this* repository's own source remains a review obligation.
-Nothing here runs the analyzer over the kernel.
+The kernel is also its own first consumer. `tools/analyzer-probe/check.sh`, run by
+`validate.sh full`, copies the tree, attaches the packed analyzer to every packaged project
+through MSBuild's `CustomAfterMicrosoftCommonTargets` hook, and fails on any RK diagnostic.
+The analyzer never becomes a reference, a props import or a lock-file entry, so the graph
+above is unchanged. A deliberate ambient draw in the same copy has to fail that build, which
+shows the analyzer actually loaded. Everything the analyzer is silent about — its false
+negatives included — is still a review obligation here, as it is for any consumer.
 
 All three checks are pattern matches over source text, so reflection, aliasing and source
 generation walk past them. [ADR 0009](decisions/0009-what-the-source-blacklists-do-not-prove.md)
