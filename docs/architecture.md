@@ -83,6 +83,10 @@ result after the fact, which is the failure mode that actually recurs. It does n
 enumerating a `Dictionary` or a `HashSet`, or anything else whose order is an implementation
 detail of the runtime. That one is a review obligation, not a gate.
 
+All three checks are pattern matches over source text, so reflection, aliasing and source
+generation walk past them. [ADR 0009](decisions/0009-what-the-source-blacklists-do-not-prove.md)
+records that limit, the classes of bypass left deliberately unaddressed, and why.
+
 Ordered results are ordered **by construction** — the sequence in which things actually
 happened — never sorted afterwards. A sort applied to an ordered history destroys the
 evidence that the history was deterministic in the first place.

@@ -8,7 +8,9 @@ history — on any machine, on any run. The kernel does not make that true of an
 owns no execution, no persistence and no mechanics. What it provides is the part an engine
 cannot safely invent for itself: identity you can compare, provenance you can check, a
 replay-stable generator, and a way to say "I cannot resolve this" that a caller must handle.
-Whether an engine honours the contract is the engine's business, and its own checks'.
+Whether an engine honours the contract is the engine's business, and its own checks':
+no check in this repository follows the package to a consumer, by decision
+([ADR 0010](docs/decisions/0010-enforcement-stops-at-the-package-boundary.md)).
 
 Where it cannot resolve a rule, an engine built on these primitives
 says so explicitly instead of guessing.
@@ -123,9 +125,11 @@ the exit code is the part the gate actually reads.
 
 What these do **not** prove: the determinism and boundary checks are pattern matches over
 source. Reflection, aliasing, extension methods and source generation defeat them. They
-raise the cost of an accident; they are not a proof of absence. The module docstring in
-`tools/repo-checks.py` says so too, and `tools/tests/` holds 105 tests that exist to show
-each check actually fails when it should.
+raise the cost of an accident; they are not a proof of absence.
+[ADR 0009](docs/decisions/0009-what-the-source-blacklists-do-not-prove.md) records which
+classes of bypass are known and deliberately unaddressed, and what would change that. The
+module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 105 tests
+that exist to show each check actually fails when it should.
 
 Public API changes to the three packaged assemblies are tracked separately, by
 `Microsoft.CodeAnalysis.PublicApiAnalyzers` — adding or reshaping a public member fails the
