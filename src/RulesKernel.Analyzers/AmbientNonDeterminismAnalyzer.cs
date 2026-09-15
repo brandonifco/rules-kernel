@@ -37,11 +37,40 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
     private const string HelpUri =
         "https://github.com/brandonifco/rules-kernel/blob/main/docs/decisions/0011-shipping-a-determinism-analyzer.md";
 
-    /// <summary>RK0001 — a value drawn from ambient entropy cannot be replayed.</summary>
+    /// <summary>
+    /// RK0001 — a drawn value that cannot be replayed, either because its source is ambient
+    /// or because its algorithm is not pinned.
+    /// </summary>
     public static readonly DiagnosticDescriptor AmbientEntropy = Rule(
         "RK0001",
-        "Ambient entropy is not replayable",
-        "'{0}' draws from ambient entropy; take a seeded source as an argument instead");
+        "Ambient or unpinned entropy is not replayable",
+
+        // The reason is a message argument rather than fixed text because this one rule
+        // covers two distinct failures, and docs/decisions/0015 records what happened when
+        // it claimed only the first. SRD_Combat's SeededRandomSource -- the disciplined
+        // shape the kernel asks an engine to build, whose own doc comment forbids
+        // Random.Shared -- was told it "draws from ambient entropy". It does not: it is
+        // seeded. A right finding with a false reason is read as a wrong finding, and the
+        // consumer suppresses the rule and stops reading the rest of them, which
+        // docs/decisions/0011 names as the expensive direction of error.
+        "'{0}' {1}");
+
+    // Genuinely ambient: the value depends on something outside the program's arguments, and
+    // no amount of care at the call site makes the next run agree with this one.
+    private const string DrawsFromAmbientEntropy =
+        "draws from ambient entropy; take a seeded source as an argument instead";
+
+    // Seeded, deterministic today, and still not a replay contract. docs/decisions/0005 is
+    // the whole argument: System.Random's seeded behaviour has been stable in practice and
+    // was deliberately preserved when .NET 6 changed the seedless path, but it has never
+    // been contractual and does not extend across runtimes or reimplementations. That is
+    // precisely why PCG32 was ported and pinned by reference vectors rather than trusting
+    // the framework, and why RandomAlgorithmId records which generator produced a sequence.
+    // A seeded System.Random is repeatable, which is not the same claim as replayable.
+    private const string UsesAnUnpinnedAlgorithm =
+        "is System.Random, whose algorithm is not guaranteed stable across runtime versions; "
+        + "a seed makes it repeatable within one runtime, not replayable across them, so take "
+        + "a source with a pinned algorithm as an argument instead";
 
     /// <summary>RK0002 — a result that reads the clock differs on every run.</summary>
     public static readonly DiagnosticDescriptor AmbientClock = Rule(
@@ -205,7 +234,12 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var lookup = new Lookup(types, members, objectGetHashCode, equalityComparers);
+        // System.Random is the one banned type whose members do not all fail for the same
+        // reason, so the reason RK0001 prints depends on which member matched; see
+        // Lookup.EntropyReason.
+        var random = context.Compilation.GetTypeByMetadataName("System.Random");
+
+        var lookup = new Lookup(types, members, objectGetHashCode, equalityComparers, random);
 
         // MethodReference is here because a banned member captured as a delegate is never an
         // Invocation: `Func<Guid> f = Guid.NewGuid;` binds the same symbol a call would and
@@ -227,17 +261,20 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         private readonly Dictionary<ISymbol, DiagnosticDescriptor> _members;
         private readonly IMethodSymbol? _objectGetHashCode;
         private readonly List<INamedTypeSymbol> _equalityComparers;
+        private readonly INamedTypeSymbol? _random;
 
         internal Lookup(
             Dictionary<INamedTypeSymbol, DiagnosticDescriptor> types,
             Dictionary<ISymbol, DiagnosticDescriptor> members,
             IMethodSymbol? objectGetHashCode,
-            List<INamedTypeSymbol> equalityComparers)
+            List<INamedTypeSymbol> equalityComparers,
+            INamedTypeSymbol? random)
         {
             _types = types;
             _members = members;
             _objectGetHashCode = objectGetHashCode;
             _equalityComparers = equalityComparers;
+            _random = random;
         }
 
         internal void Inspect(OperationAnalysisContext context)
@@ -278,8 +315,48 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
                 ? definition.Name
                 : definition.ContainingType.Name + "." + definition.Name;
 
+            // Every rule but RK0001 states one reason, because every member it matches fails
+            // for that reason. RK0001 takes a second argument instead of a second diagnostic
+            // id: docs/decisions/0015 considered moving seeded System.Random to RK0005 and
+            // declined, because an id is a permanent contract a consumer suppresses against
+            // and spending one to correct a sentence is the wrong trade.
+            var arguments = ReferenceEquals(rule, AmbientEntropy)
+                ? new object[] { name, EntropyReason(definition) }
+                : new object[] { name };
+
             context.ReportDiagnostic(
-                Diagnostic.Create(rule, operation.Syntax.GetLocation(), name));
+                Diagnostic.Create(rule, operation.Syntax.GetLocation(), arguments));
+        }
+
+        // Which of RK0001's two reasons is true of the member that matched.
+        //
+        // Random.Shared and the parameterless constructor are seeded from the operating
+        // system, so they are ambient in the plain sense. Everything else on System.Random
+        // -- a seeded constructor, and any draw off an instance whose provenance the call
+        // site cannot see -- is the docs/decisions/0005 problem instead: deterministic
+        // within a runtime, uncontracted across runtimes.
+        //
+        // The unseen-provenance case is why a draw reports the algorithm reason rather than
+        // no reason at all. `_random.Next(sides)` inside SeededRandomSource is a call on a
+        // field, and the field's symbol belongs to the consuming type, so nothing here can
+        // tell a seeded instance from Random.Shared assigned into a field. The algorithm
+        // reason is true of both, and being true of both is the property that matters.
+        private string EntropyReason(ISymbol definition)
+        {
+            if (_random is null
+                || definition.ContainingType is not { } containing
+                || !SymbolEqualityComparer.Default.Equals(containing.OriginalDefinition, _random))
+            {
+                // Guid.NewGuid, RandomNumberGenerator, and anything else added to RK0001
+                // that is not System.Random: ambient by construction.
+                return DrawsFromAmbientEntropy;
+            }
+
+            var seededFromTheOperatingSystem =
+                definition is IPropertySymbol { Name: "Shared" }
+                || definition is IMethodSymbol { MethodKind: MethodKind.Constructor, Parameters.Length: 0 };
+
+            return seededFromTheOperatingSystem ? DrawsFromAmbientEntropy : UsesAnUnpinnedAlgorithm;
         }
 
         private (DiagnosticDescriptor Rule, ISymbol Definition)? Match(ISymbol? symbol)

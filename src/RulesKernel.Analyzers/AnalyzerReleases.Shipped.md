@@ -10,7 +10,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-RK0001 | Determinism | Warning | Ambient entropy is not replayable
+RK0001 | Determinism | Warning | Ambient or unpinned entropy is not replayable
 RK0002 | Determinism | Warning | Ambient clock is not replayable
 RK0003 | Determinism | Warning | Ambient environment makes a result machine-dependent
 RK0004 | Determinism | Warning | Concurrency makes resolution order non-deterministic

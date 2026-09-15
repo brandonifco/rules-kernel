@@ -120,6 +120,81 @@ public sealed class AmbientNonDeterminismAnalyzerTests
         Assert.Equal(new[] { "RK0001" }, AnalyzerHarness.Diagnose(onReceiver));
     }
 
+    // RK0001 says two different things, and which one it says is the change docs/decisions/
+    // 0015 held the tag for. The four below pin both sentences to the shapes they are true
+    // of, because an id assertion alone cannot tell a true reason from a false one -- that is
+    // exactly how the seeded case passed 358 tests and then embarrassed itself on the first
+    // real codebase it met.
+
+    [Fact]
+    public void A_seeded_random_source_is_told_its_algorithm_is_unpinned_not_that_it_is_ambient()
+    {
+        // SeededRandomSource from SRD_Combat, near enough to copy. It is the disciplined
+        // shape: the seam takes a seed and the interface's own contract forbids
+        // Random.Shared. Telling this author they "draw from ambient entropy" is false, and
+        // the finding survives only because the reason it now gives is true.
+        var seeded = """
+            public interface IRandomSource
+            {
+                int Roll(int sides);
+            }
+
+            public sealed class SeededRandomSource : IRandomSource
+            {
+                private readonly System.Random _random;
+
+                public SeededRandomSource(int seed) => _random = new System.Random(seed);
+
+                public int Roll(int sides) => _random.Next(1, sides + 1);
+            }
+            """;
+
+        Assert.Equal(
+            new[]
+            {
+                "RK0001: 'Random..ctor' is System.Random, whose algorithm is not guaranteed stable "
+                    + "across runtime versions; a seed makes it repeatable within one runtime, not "
+                    + "replayable across them, so take a source with a pinned algorithm as an "
+                    + "argument instead",
+                "RK0001: 'Random.Next' is System.Random, whose algorithm is not guaranteed stable "
+                    + "across runtime versions; a seed makes it repeatable within one runtime, not "
+                    + "replayable across them, so take a source with a pinned algorithm as an "
+                    + "argument instead",
+            },
+            AnalyzerHarness.Describe(seeded));
+    }
+
+    [Fact]
+    public void Random_Shared_still_reports_ambient_entropy()
+    {
+        // The half of RK0001 that was always accurate. Asserted beside the seeded case so
+        // that narrowing the sentence there is visibly a split rather than a replacement.
+        Assert.Equal(
+            new[] { "RK0001: 'Random.Shared' draws from ambient entropy; take a seeded source as an argument instead" },
+            AnalyzerHarness.Describe(Wrap("var x = System.Random.Shared.Next();")));
+    }
+
+    [Fact]
+    public void A_parameterless_Random_constructor_still_reports_ambient_entropy()
+    {
+        // `new Random()` seeds itself from the operating system, so it is ambient in the
+        // plain sense and the seeded reason would be the wrong one here. This is the line
+        // between the two messages, and it is one constructor argument wide.
+        Assert.Equal(
+            new[] { "RK0001: 'Random..ctor' draws from ambient entropy; take a seeded source as an argument instead" },
+            AnalyzerHarness.Describe(Wrap("var x = new System.Random().Next();")));
+    }
+
+    [Fact]
+    public void Guid_NewGuid_still_reports_ambient_entropy()
+    {
+        // Nothing outside System.Random changed reason, and a rule that quietly gave every
+        // member the new sentence would still pass the id assertions above.
+        Assert.Equal(
+            new[] { "RK0001: 'Guid.NewGuid' draws from ambient entropy; take a seeded source as an argument instead" },
+            AnalyzerHarness.Describe(Wrap("var x = System.Guid.NewGuid();")));
+    }
+
     [Fact]
     public void Environment_TickCount_reports_as_a_clock_not_as_machine_state()
     {
