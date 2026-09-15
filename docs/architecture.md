@@ -52,9 +52,9 @@ what content hash, as of what moment), `RandomAlgorithmId` (which generator, if 
 belongs to that corpus's adapter. Page numbers, regulation designations, statute sections
 and numbered board-game rules are all citations; none of them is privileged by the kernel.
 
-**Resolution** — `UnresolvedReason`, `UnresolvedResult` and `Resolution<T>`: the contract by
-which an engine says "I cannot resolve this, here is why, here is where the rule lives"
-instead of guessing.
+**Resolution** — `UnresolvedReason`, `UnresolvedResult` and `Resolution<T>`: the vocabulary in
+which an engine says "I cannot resolve this, here is why, here is where the rule lives". The
+engine chooses to say it. The kernel cannot detect one that does not.
 
 ## What the kernel is not
 
@@ -74,8 +74,19 @@ same ruleset version + same corpus baselines + same initial state + same ordered
 ```
 
 Two halves, and the second matters as much as the first. An engine that is reproducible but
-guesses at unimplemented rules is reproducibly wrong. `Resolution<T>` is how the second half
-is enforced in the type system rather than in prose.
+guesses at unimplemented rules is reproducibly wrong. The second half is also the weaker
+half, and it is enforced in two different places:
+
+- **Whether an operation may be non-total** is decided by the engine and checked by a
+  reviewer ([0004](decisions/0004-unresolved-results-and-the-totality-burden.md)). An
+  operation that returns a bare `int` for a rule it has not implemented compiles, runs, and
+  replays perfectly. Nothing in the kernel or the analyzer can see it.
+- **What a caller does with a declared gap** is enforced by the type. Once an operation
+  returns `Resolution<T>`, a caller reaches the value through `Match`, which requires an
+  unresolved handler, or through a type test, which names the case. It cannot reach the value
+  without handling the unresolved case. It can still handle it badly — `_ => 0` is a guess
+  written at the call site — and at least that guess is visible in the code
+  ([0018](decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
 No ambient randomness, no ambient clock, no environment reads, no order-dependent
 iteration. The first three are checked: `tools/repo-checks.py --only determinism` fails the
