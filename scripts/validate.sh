@@ -216,6 +216,22 @@ if [[ "$MODE" == "full" ]]; then
   run "analyzer-probe" tools/analyzer-probe/check.sh || true
 fi
 
+# The same argument one layer up. Everything above this point builds the packages from
+# source and tests them through project references; an engine restores a .nupkg and binds
+# against whatever is inside it. 0.1.0 shipped lib/net10.0 only and locked a net8.0 engine
+# out of the kernel entirely with every test passing (docs/decisions/0008), and it was
+# found by building and RUNNING a real consumer. This packs the three published packages
+# under a version that cannot shadow a release, restores them into an isolated package
+# root, and executes a consumer on both committed frameworks. `full` only, for the same
+# reason as the analyzer probe: it packs and restores, which the inner loop should not pay
+# for on every run. It costs about nine seconds, which is the cheaper half of that
+# decision -- if it ever stops being, the alternative is a scheduled workflow, at the price
+# of learning about a broken package after the merge rather than before it.
+if [[ "$MODE" == "full" ]]; then
+  step "Packages are usable by a consumer that runs"
+  run "package-probe" tools/package-probe/check.sh || true
+fi
+
 step "Repository invariants"
 run "repo-checks" tools/repo-checks.py || true
 
