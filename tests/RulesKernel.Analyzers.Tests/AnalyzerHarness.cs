@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -11,7 +12,18 @@ internal static class AnalyzerHarness
 {
     private static readonly ImmutableArray<MetadataReference> References = BuildReferences();
 
-    internal static ImmutableArray<string> Diagnose(string source)
+    internal static ImmutableArray<string> Diagnose(string source) =>
+        Report(source).Select(d => d.Id).ToImmutableArray();
+
+    /// Same, but each entry is "ID: rendered message". A diagnostic's *reason* is the part a
+    /// consumer reads and acts on, and docs/decisions/0015 records a rule whose ids were all
+    /// correct while one of its sentences was false, so the sentences are asserted too.
+    internal static ImmutableArray<string> Describe(string source) =>
+        Report(source)
+            .Select(d => d.Id + ": " + d.GetMessage(CultureInfo.InvariantCulture))
+            .ToImmutableArray();
+
+    private static ImmutableArray<Diagnostic> Report(string source)
     {
         var compilation = CSharpCompilation.Create(
             "Consumer",
@@ -43,7 +55,6 @@ internal static class AnalyzerHarness
 
         return reported
             .OrderBy(d => d.Location.SourceSpan.Start)
-            .Select(d => d.Id)
             .ToImmutableArray();
     }
 

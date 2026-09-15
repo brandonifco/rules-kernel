@@ -15,7 +15,7 @@ RulesKernel.Randomness   PCG32, bias-free bounded draws       depends on RulesKe
       ^
 RulesKernel.Testing      scripted test doubles                depends on RulesKernel.Randomness
 
-RulesKernel.Analyzers    RK0001-RK0007 over a consumer's code depends on nothing
+RulesKernel.Analyzers    RK0001-RK0005, RK0007 over a consumer   depends on nothing
 ```
 
 `RulesKernel.Analyzers` stands outside the stack rather than on top of it. It references no

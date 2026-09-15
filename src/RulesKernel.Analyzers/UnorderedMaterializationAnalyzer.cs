@@ -37,6 +37,12 @@ public sealed class UnorderedMaterializationAnalyzer : DiagnosticAnalyzer
     private const string HelpUri =
         "https://github.com/brandonifco/rules-kernel/blob/main/docs/decisions/0014-warning-where-unordered-becomes-ordered.md";
 
+    // RK0006 is absent, and RK0007 must not move down to close the gap. RK0006 was ambient
+    // culture and time zone, never published, and folded into RK0003 by
+    // docs/decisions/0016. Renumbering this rule to tidy the sequence would change the
+    // identity of a rule whose meaning did not change, which is the one thing these numbers
+    // exist to prevent.
+
     /// <summary>RK0007 — an unordered collection became an ordered result with no sort in between.</summary>
     public static readonly DiagnosticDescriptor UnorderedMaterialization = new DiagnosticDescriptor(
         "RK0007",
