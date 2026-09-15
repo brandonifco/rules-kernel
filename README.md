@@ -122,6 +122,11 @@ tools/repo-checks.py
 - **solution-membership** — every project is in `RulesKernel.slnx`. One deleted line would
   otherwise drop a project from the build and the test run with no other symptom.
 - **action-pins** — every workflow `uses:` is a 40-character commit SHA.
+- **target-frameworks** — every packaged project still targets what
+  [ADR 0008](docs/decisions/0008-multi-targeting-so-adoption-is-not-an-upgrade.md) committed
+  to, and its lock file covers the same set. `dotnet restore --locked-mode` already fails
+  when the two disagree; this catches a framework dropped from *both*, where they agree and
+  the commitment is simply gone.
 - **parseable** — every XML, YAML and JSON file parses. A malformed workflow is not an error
   on GitHub; it simply never runs.
 - **text-hygiene** — UTF-8, no BOM, LF, one trailing newline, and no bidi controls,
@@ -135,7 +140,7 @@ source. Reflection, aliasing, extension methods and source generation defeat the
 raise the cost of an accident; they are not a proof of absence.
 [ADR 0009](docs/decisions/0009-what-the-source-blacklists-do-not-prove.md) records which
 classes of bypass are known and deliberately unaddressed, and what would change that. The
-module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 105 tests
+module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 113 tests
 that exist to show each check actually fails when it should.
 
 Public API changes to the four packaged assemblies are tracked separately, by

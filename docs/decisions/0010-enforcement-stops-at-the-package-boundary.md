@@ -14,7 +14,7 @@ separate opt-in package.
 
 `tools/repo-checks.py` enforces this repository's determinism invariants: no
 `Random.Shared`, no ambient clock, no environment reads, no concurrency, no filesystem in
-the kernel. Nine checks, backed by 105 tests in `tools/tests/`.
+the kernel. Ten checks, backed by 113 tests in `tools/tests/`.
 
 None of it follows the NuGet package. The kernel can be spotless while an engine that
 references it calls `Random.Shared`, `DateTime.UtcNow` and `Task.Run` throughout, and

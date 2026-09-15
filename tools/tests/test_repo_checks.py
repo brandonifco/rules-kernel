@@ -28,6 +28,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import re
 import shutil
 import subprocess
@@ -105,10 +106,13 @@ class Fixture:
             self.write(f"docs/decisions/{number}-{slug}.md", f"# {number}\n")
         self.write("docs/architecture.md", "# Architecture\n")
 
-        self.project("src/RulesKernel", "RulesKernel", packable=True)
+        self.project("src/RulesKernel", "RulesKernel", packable=True,
+                     target_frameworks=["net8.0", "net10.0"])
         self.project("src/RulesKernel.Randomness", "RulesKernel.Randomness", packable=True,
+                     target_frameworks=["net8.0", "net10.0"],
                      project_refs=["../RulesKernel/RulesKernel.csproj"])
         self.project("tests/RulesKernel.Testing", "RulesKernel.Testing", packable=True,
+                     target_frameworks=["net8.0", "net10.0"],
                      project_refs=["../../src/RulesKernel.Randomness/RulesKernel.Randomness.csproj"])
         self.project("tests/RulesKernel.Tests", "RulesKernel.Tests", packable=False,
                      project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
@@ -118,7 +122,8 @@ class Fixture:
                                    "../RulesKernel.Testing/RulesKernel.Testing.csproj"])
         # Referenced by nothing and referencing nothing: the analyzer is a build asset a
         # consumer opts into, not a layer of the stack. See docs/decisions/0011.
-        self.project("src/RulesKernel.Analyzers", "RulesKernel.Analyzers", packable=True)
+        self.project("src/RulesKernel.Analyzers", "RulesKernel.Analyzers", packable=True,
+                     target_frameworks=["netstandard2.0"])
         self.project("tests/RulesKernel.Analyzers.Tests", "RulesKernel.Analyzers.Tests",
                      packable=False,
                      project_refs=["../../src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj"])
@@ -143,6 +148,9 @@ class Fixture:
     def project(self, directory: str, name: str, *, packable: bool,
                 project_refs: list[str] | None = None,
                 package_refs: list[str] | None = None,
+                target_frameworks: list[str] | None = None,
+                lock_frameworks: list[str] | None = None,
+                write_lock: bool = True,
                 raw_items: str = "") -> Path:
         extra = "" if packable else "    <IsPackable>false</IsPackable>\n"
         if packable:
@@ -153,10 +161,23 @@ class Fixture:
         for ref in package_refs or []:
             items += f'  <ItemGroup>\n    <PackageReference Include="{ref}" />\n  </ItemGroup>\n'
         items += raw_items
+        if target_frameworks:
+            # An emptied singular element alongside the plural one, exactly as the real
+            # projects clear the Directory.Build.props default.
+            extra += f"    <TargetFrameworks>{';'.join(target_frameworks)}</TargetFrameworks>\n"
+            extra += "    <TargetFramework />\n"
         self.write(f"{directory}/{name}.csproj",
                    CSPROJ.format(name=name, extra_properties=extra, items=items))
         self.write(f"{directory}/AssemblyMarker.cs",
                    f"namespace {name};\n\npublic static class AssemblyMarker\n{{\n}}\n")
+        # This helper also overwrites an existing project, so a lock file it does not write
+        # must be removed rather than left over from the previous call.
+        lock = self.root / directory / "packages.lock.json"
+        if write_lock and (locked := lock_frameworks or target_frameworks):
+            self.write(f"{directory}/packages.lock.json", json.dumps(
+                {"version": 1, "dependencies": {fw: {} for fw in locked}}, indent=2) + "\n")
+        elif lock.exists():
+            lock.unlink()
         return self.root / directory
 
     def write_solution(self) -> None:
@@ -211,6 +232,78 @@ class FixtureIsCleanTests(CheckTestCase):
             with self.subTest(check=name):
                 self.assertEqual([], self.failures(check), name)
                 self.assertGreater(check(self.root).examined, 0, f"{name} examined nothing")
+
+
+# --------------------------------------------------------------- the framework commitment
+
+
+class TargetFrameworkTests(CheckTestCase):
+    """ADR 0008 made net8.0 a commitment. This is what keeps it one.
+
+    `dotnet restore --locked-mode` already fails when a lock file and its project disagree,
+    which is how a dependency bump that regenerates only the lock files gets caught -- it is
+    what caught one. The case it cannot catch is a framework dropped from BOTH, where the
+    two agree and the commitment is simply gone. That is the case this check exists for, and
+    it is asserted directly below.
+    """
+
+    def test_the_committed_frameworks_pass_and_something_was_examined(self) -> None:
+        self.assertClean(rc.check_target_frameworks)
+        self.assertExamined(rc.check_target_frameworks)
+
+    def test_dropping_a_framework_from_the_csproj_fails(self) -> None:
+        self.fixture.project("src/RulesKernel.Randomness", "RulesKernel.Randomness",
+                             packable=True, target_frameworks=["net10.0"],
+                             lock_frameworks=["net8.0", "net10.0"])
+
+        self.assertFailsWith(rc.check_target_frameworks, "targets ['net10.0']")
+
+    def test_dropping_a_framework_from_the_lock_file_fails(self) -> None:
+        self.fixture.project("src/RulesKernel.Randomness", "RulesKernel.Randomness",
+                             packable=True, target_frameworks=["net8.0", "net10.0"],
+                             lock_frameworks=["net10.0"])
+
+        self.assertFailsWith(rc.check_target_frameworks, "locks ['net10.0']")
+
+    def test_dropping_it_from_both_is_still_caught(self) -> None:
+        # The whole reason this check exists. The csproj and the lock file agree, so
+        # `dotnet restore --locked-mode` is perfectly happy and net8.0 is gone.
+        self.fixture.project("src/RulesKernel.Randomness", "RulesKernel.Randomness",
+                             packable=True, target_frameworks=["net10.0"])
+
+        self.assertFailsWith(rc.check_target_frameworks, "superseding ADR 0008")
+
+    def test_an_undeclared_packaged_project_fails(self) -> None:
+        self.fixture.project("src/RulesKernel.Extra", "RulesKernel.Extra", packable=True,
+                             target_frameworks=["net10.0"])
+
+        self.assertFailsWith(rc.check_target_frameworks, "not declared in EXPECTED_TARGET_FRAMEWORKS")
+
+    def test_a_missing_lock_file_fails(self) -> None:
+        self.fixture.project("src/RulesKernel.Randomness", "RulesKernel.Randomness",
+                             packable=True, target_frameworks=["net8.0", "net10.0"],
+                             write_lock=False)
+
+        self.assertFailsWith(rc.check_target_frameworks, "no packages.lock.json")
+
+    def test_a_long_form_lock_entry_is_the_same_framework(self) -> None:
+        # NuGet writes the short TFM for .NETCoreApp but the long form for .NETStandard, so
+        # the first version of this check reported RulesKernel.Analyzers as broken when it
+        # was correct. A false positive in a gate is not a smaller bug than a false negative.
+        self.fixture.project("src/RulesKernel.Analyzers", "RulesKernel.Analyzers",
+                             packable=True, target_frameworks=["netstandard2.0"],
+                             lock_frameworks=[".NETStandard,Version=v2.0"])
+
+        self.assertClean(rc.check_target_frameworks)
+
+    def test_a_test_project_is_out_of_scope(self) -> None:
+        # Only what ships carries the commitment. A test project targets whatever the
+        # repository's own SDK is, and changing that breaks nobody downstream.
+        self.fixture.project("tests/RulesKernel.Tests", "RulesKernel.Tests", packable=False,
+                             target_frameworks=["net10.0"],
+                             project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
+
+        self.assertClean(rc.check_target_frameworks)
 
 
 # ------------------------------------------------------------------ the C# text lexer
