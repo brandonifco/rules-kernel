@@ -13,8 +13,11 @@ with one exception an engine opts into: `RulesKernel.Analyzers` carries the dete
 diagnostics into the consumer's own build
 ([ADR 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
-Where it cannot resolve a rule, an engine built on these primitives
-says so explicitly instead of guessing.
+What the kernel does not do is stop an engine from guessing. An operation that returns a bare
+value can return a guess, and nothing here can tell. Once an operation declares itself
+potentially non-total by returning `Resolution<T>`, the kernel makes the unresolved case
+something a caller has to name before it can reach a value
+([decision 0018](docs/decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
 The kernel is **referenced, not copied**. A correction made here reaches every engine built
 on it through a version bump, rather than being stranded in whichever engine happened to
@@ -143,8 +146,12 @@ return Resolution<int>.FromUnresolved(new UnresolvedResult(
 
 Five closed reasons, all about the engine's relationship to its corpus rather than about
 subject matter. An engine that is reproducible but guesses at unimplemented rules is
-reproducibly wrong; this is the half of the determinism contract that prevents it
-([decision 0004](docs/decisions/0004-unresolved-results-and-the-totality-burden.md)).
+reproducibly wrong, and this is how an engine avoids that. It does not prevent it. Whether an
+operation returns the union is the engine's decision and a reviewer's question — *why is this
+total?* ([decision 0004](docs/decisions/0004-unresolved-results-and-the-totality-burden.md)).
+What the type enforces begins after that decision: no path from a `Resolution<T>` to its value
+skips the unresolved case, though a handler can still discard it on purpose
+([decision 0018](docs/decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
 ## Verify it
 

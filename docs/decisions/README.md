@@ -30,3 +30,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0015](0015-calibrating-the-rule-set-before-it-freezes.md) | Calibrating the rule set before it freezes |
 | [0016](0016-retiring-rk0006-into-a-narrowed-rk0003.md) | Retiring RK0006 into a narrowed RK0003 |
 | [0017](0017-a-held-tag-returns-main-to-a-development-version.md) | A held tag returns main to a development version |
+| [0018](0018-resolution-enforces-handling-not-honesty.md) | Resolution enforces handling, not honesty |
