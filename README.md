@@ -36,8 +36,9 @@ no page numbers, no subject-matter vocabulary of any kind.
 | `RulesKernel.Analyzers` | compile-time diagnostics for ambient non-determinism | nothing |
 
 `RulesKernel.Analyzers` is a build asset, not a reference: it ships no `lib/`, depends on
-nothing, and an engine that takes it gets RK0001-RK0004 against ambient entropy, clock,
-environment and concurrency in its *own* code. It is opt-in and deliberately not a
+nothing, and an engine that takes it gets RK0001-RK0007 against ambient entropy, clock,
+environment, concurrency, replay-unstable hashing, ambient culture and time zone, and
+unordered collections materialized into ordered results, in its *own* code. It is opt-in and deliberately not a
 dependency of `RulesKernel` ([decision 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
 Randomness is optional. An engine over a statute or a regulation resolves every question

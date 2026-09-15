@@ -8,3 +8,8 @@ static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientCultu
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientEntropy -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientEnvironment -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.ReplayUnstableHashing -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
+RulesKernel.Analyzers.UnorderedMaterializationAnalyzer
+RulesKernel.Analyzers.UnorderedMaterializationAnalyzer.UnorderedMaterializationAnalyzer() -> void
+override RulesKernel.Analyzers.UnorderedMaterializationAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
+override RulesKernel.Analyzers.UnorderedMaterializationAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
+static readonly RulesKernel.Analyzers.UnorderedMaterializationAnalyzer.UnorderedMaterialization -> Microsoft.CodeAnalysis.DiagnosticDescriptor!

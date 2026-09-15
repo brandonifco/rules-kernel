@@ -12,7 +12,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>RulesKernel.Analyzers</RootNamespace>
     <PackageId>RulesKernel.Analyzers</PackageId>
-    <Description>Compile-time diagnostics for ambient non-determinism: entropy, clock, environment and concurrency.</Description>
+    <Description>Compile-time diagnostics for non-determinism: ambient entropy, clock, environment, concurrency, culture and time zone; replay-unstable hashing; and unordered collections materialized into ordered results.</Description>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <!-- NU5128: this package ships no lib/ folder on purpose; an analyzer is a build
          asset, not a reference. The absence is the design, not an omission. -->
