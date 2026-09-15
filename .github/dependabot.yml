@@ -16,6 +16,13 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Microsoft.CodeAnalysis.CSharp is pinned to the OLDEST Roslyn the analyzer must load
+    # under, not the newest (Directory.Packages.props, docs/decisions/0011). Dependabot's first
+    # grouped PR proposed 4.8.0 -> 5.9.0, which would lock out every consumer on SDK 8.0.x.
+    # Patch releases of the floor are still proposed.
+    ignore:
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       nuget-dependencies:
         patterns:
