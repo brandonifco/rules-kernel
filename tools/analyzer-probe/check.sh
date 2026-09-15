@@ -139,6 +139,51 @@ else
   status=1
 fi
 
+# -- 5: the README's test-project configuration scopes by path ----------------------------
+
+# README tells adopters to silence RK0001 and RK0004 for tests with a second .editorconfig
+# beside them (docs/decisions/0020). That block is taken from README here, not copied, so
+# the advice and this check cannot drift apart. The helper that trips both rules must build
+# clean under Tests/, and the identical helper under Engine/ must still fail: a
+# configuration that silenced the whole project would pass the first half alone.
+readme_ini="$(python3 - <<'PY'
+import re, pathlib
+text = pathlib.Path("README.md").read_text(encoding="utf-8")
+match = re.search(r"<!-- sample: test-editorconfig -->\n```ini\n(.*?)```", text, re.S)
+print(match.group(1) if match else "", end="")
+PY
+)"
+if [[ -z "$readme_ini" ]]; then
+  echo "FAIL: README.md has no '<!-- sample: test-editorconfig -->' ini block to verify"
+  status=1
+else
+  helper='public static class Helper
+{
+    public static string TempName() => System.Guid.NewGuid().ToString();
+    public static System.Threading.Tasks.Task Work() => System.Threading.Tasks.Task.Run(() => { });
+}'
+  for placement in Tests Engine; do
+    dir="$WORK/scoped-$placement"
+    scaffold "$dir" '    public static int Resolve(int seed, int bound) => (seed + bound) % 6;'
+    mkdir -p "$dir/Tests" "$dir/$placement"
+    printf '%s' "$readme_ini" > "$dir/Tests/.editorconfig"
+    printf '%s\n' "$helper" > "$dir/$placement/Helper.cs"
+    (cd "$dir" && dotnet build Consumer.csproj -c Release -p:UseSharedCompilation=false) \
+        >"$WORK/scoped-$placement.log" 2>&1 && built=1 || built=0
+    if [[ "$placement" == Tests && "$built" -eq 1 ]]; then
+      echo "ok   README's test .editorconfig silences RK0001 and RK0004 under Tests/"
+    elif [[ "$placement" == Engine && "$built" -eq 0 ]] \
+        && grep -q 'error RK0001' "$WORK/scoped-$placement.log" \
+        && grep -q 'error RK0004' "$WORK/scoped-$placement.log"; then
+      echo "ok   the same helper outside Tests/ still fails with RK0001 and RK0004"
+    else
+      echo "FAIL: README's test .editorconfig did not scope by path (helper under $placement/, built=$built)"
+      grep -oE 'error [A-Z]+[0-9]+: [^[]*' "$WORK/scoped-$placement.log" | sort -u | head -5
+      status=1
+    fi
+  done
+fi
+
 # -- 3 and 4: the kernel's own packaged sources -------------------------------------------
 
 # The analyzer exactly as the package ships it, not the build output: a consumer loads the
