@@ -1,6 +1,6 @@
 name: publish
 
-# Publishes the three packages to nuget.org.
+# Publishes the four packaged assemblies to nuget.org.
 #
 # nuget.org rather than GitHub Packages, deliberately. GitHub Packages cannot serve NuGet
 # anonymously even for a public package, and a workflow's GITHUB_TOKEN is scoped to its own
@@ -8,8 +8,10 @@ name: publish
 # token as a repository secret just to restore it. A kernel whose entire purpose is being
 # referenced by many independent repositories must be restorable without a credential.
 #
-# The version comes from the pushed tag, and the tag must agree with VersionPrefix in
-# Directory.Build.props (checked below) before anything is packed. Earlier this workflow
+# The version comes from the pushed tag, and the tag must agree with the version MSBuild
+# actually resolves for every packable project (checked below) before anything is packed.
+# Comparing it to <VersionPrefix> alone was not enough once main began carrying a
+# prerelease suffix; see that step's comment. Earlier this workflow
 # packed with `-p:Version=<tag>` on top of a build whose assembly already had a different
 # version baked in from Directory.Build.props -- so pack RELABELLED the package without
 # rebuilding, and a package stamped e.g. 0.3.0 could ship an assembly whose
@@ -43,7 +45,7 @@ on:
   # A manual re-run exists for retrying a publish that failed after the gate already
   # passed (e.g. a transient OIDC/nuget.org failure) -- it does not accept an arbitrary
   # version. It must be launched with a tag selected as the ref (GitHub's workflow_dispatch
-  # ref-picker allows a branch too; the "tag must match VersionPrefix" step below fails
+  # ref-picker allows a branch too; the "require a tag" and resolved-version steps below fail
   # loudly, before anything is built or packed, if a branch or a non-matching tag was
   # picked instead). This is the constraint the previous free-text `version` input did not
   # have: that input let the workflow publish any version string, from any ref, including a
@@ -121,7 +123,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Require a tag, and require it to match VersionPrefix
+      - name: Require a tag of the form vX.Y.Z
         id: version
         run: |
           if [[ "${{ github.ref_type }}" != "tag" ]]; then
@@ -135,21 +137,6 @@ jobs:
             exit 1
           fi
 
-          props_version="$(python3 -c '
-          import re, sys
-          text = open("Directory.Build.props", encoding="utf-8").read()
-          m = re.search(r"<VersionPrefix>([^<]+)</VersionPrefix>", text)
-          if not m:
-              print("no <VersionPrefix> found in Directory.Build.props", file=sys.stderr)
-              sys.exit(1)
-          print(m.group(1))
-          ')"
-
-          if [[ "$tag_version" != "$props_version" ]]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match VersionPrefix $props_version in Directory.Build.props. The package and the assembly must agree by construction: bump VersionPrefix in a reviewed commit on main, then tag that commit v$props_version and push the tag."
-            exit 1
-          fi
-
           echo "value=$tag_version" >> "$GITHUB_OUTPUT"
 
       - name: Read the pinned SDK version
@@ -160,6 +147,85 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ steps.sdk.outputs.version }}
+
+      # The tag must equal the version the packages will actually carry -- which is what
+      # MSBuild resolves, not what Directory.Build.props spells in one element.
+      #
+      # This step used to compare the tag to <VersionPrefix> alone, and that was a real
+      # hole the moment main started carrying a prerelease suffix: a tree with
+      # VersionPrefix 0.3.0 + VersionSuffix dev passes a prefix comparison under tag
+      # v0.3.0, and then publishes 0.3.0-dev. A package whose version disagrees with the
+      # tag it was cut from is the same class of provenance defect as the relabelled-pack
+      # bug this workflow's header describes: for a library whose product is replay
+      # identity, "which commit is 0.3.0" must have exactly one answer, permanently.
+      # nuget.org will not let it be corrected afterwards -- a published version can be
+      # unlisted, never deleted.
+      #
+      # Asking MSBuild is the point. PackageVersion is the property `dotnet pack` stamps,
+      # so a prefix, a suffix, a per-project override or anything else a future property
+      # introduces is already folded into the answer; nothing here re-implements MSBuild's
+      # resolution and then drifts from it. Evaluation only -- no restore, no build -- so
+      # it runs before either, and the comparison is exact string equality, which is what
+      # makes "the resolved version carries a suffix the tag does not" fail rather than
+      # pass.
+      #
+      # Scope comes from disk, not from a list: every csproj, minus the ones MSBuild says
+      # are not packable. A packable project added later is covered without anyone
+      # remembering to add it here, and a step that found nothing to examine fails rather
+      # than reporting success, because a version gate that proved nothing is worse than
+      # none.
+      - name: Require every packable project's resolved version to equal the tag
+        env:
+          TAG: ${{ github.ref_name }}
+          TAG_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+
+          tag, expected = os.environ["TAG"], os.environ["TAG_VERSION"]
+          ignored = {"bin", "obj", "artifacts", ".git"}
+
+          examined, problems = 0, []
+          for csproj in sorted(pathlib.Path(".").rglob("*.csproj")):
+              if any(part in ignored for part in csproj.parts):
+                  continue
+              evaluated = json.loads(subprocess.run(
+                  ["dotnet", "msbuild", str(csproj), "-getProperty:IsPackable",
+                   "-getProperty:PackageVersion", "-nologo"],
+                  check=True, capture_output=True, text=True,
+              ).stdout)["Properties"]
+
+              if evaluated["IsPackable"].strip().lower() == "false":
+                  continue
+              examined += 1
+              resolved = evaluated["PackageVersion"].strip()
+              print(f"{csproj}: {resolved}")
+              if resolved != expected:
+                  problems.append(
+                      f"{csproj} resolves to {resolved!r}, but the tag says {expected!r}"
+                  )
+
+          if not examined:
+              print("::error::no packable project was found, so this gate proved nothing "
+                    "about what is about to be published", file=sys.stderr)
+              sys.exit(1)
+
+          if problems:
+              for problem in problems:
+                  print(f"::error::{problem}", file=sys.stderr)
+              print(f"::error::tag {tag} does not describe what would be packed. The "
+                    "release PR clears <VersionSuffix> and sets <VersionPrefix> to the "
+                    "version being released; main carries the next version WITH a suffix, "
+                    "so a development tree can never be tagged as a release. See CLAUDE.md, "
+                    "'The release cycle'.", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"{examined} packable project(s) resolve to {expected}, matching {tag}")
+          PY
 
       # This job runs on a fresh checkout with no shared filesystem from `validate`'s
       # runner, so the Release build that gets packed has to happen here. It is built the
