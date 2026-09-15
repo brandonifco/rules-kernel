@@ -199,6 +199,15 @@ fi
 # This packs it and builds a real net8.0 consumer against the .nupkg, then builds this
 # repository's own packaged projects, from a copy, with that analyzer attached. `full` only:
 # it packs and restores, which the inner loop should not pay for on every run.
+# Dependabot's NuGet discovery restores referenced projects one framework at a time, which used
+# to rewrite the multi-targeted lock files without net8.0 (#63). Directory.Build.targets stops
+# that; this reproduces the exact invocation in a copy of the tree and fails if any lock file
+# changes. `full` only: it restores every test project's graph.
+if [[ "$MODE" == "full" ]]; then
+  step "A single-framework restore leaves the lock files alone"
+  run "lockfile-probe" tools/lockfile-probe/check.sh || true
+fi
+
 if [[ "$MODE" == "full" ]]; then
   step "Analyzer reaches a consumer, and the kernel passes it"
   run "analyzer-probe" tools/analyzer-probe/check.sh || true
