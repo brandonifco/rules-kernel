@@ -97,9 +97,8 @@ public sealed class ReplayCompatibilityIdentityTests
     /// <c>SourceBaselineId[]</c>, so the original one-line attack no longer compiles.
     ///
     /// <para>
-    /// It is not unreachable -- <c>ImmutableCollectionsMarshal.AsArray</c> still returns the
-    /// live array, and no in-process design can prevent that. This asserts the guarantee that
-    /// actually exists rather than one that does not.
+    /// <c>ImmutableCollectionsMarshal.AsArray</c> still returns an array behind what the
+    /// property hands out, but that array is now a copy; the test below writes through it.
     /// </para>
     /// </summary>
     [Fact]
@@ -109,6 +108,24 @@ public sealed class ReplayCompatibilityIdentityTests
 
         Assert.IsType<System.Collections.Immutable.ImmutableArray<SourceBaselineId>>(exposed);
         Assert.False(exposed.GetType().IsArray);
+    }
+
+    /// <summary>
+    /// The escape hatch the type used to document (#55): writing through the array behind
+    /// what <c>SourceBaselines</c> returns must not change the identity it came from.
+    /// </summary>
+    [Fact]
+    public void Writing_through_the_exposed_baselines_cannot_rewrite_the_identity()
+    {
+        var identity = Identity();
+        int hashBefore = identity.GetHashCode();
+
+        var backing = System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsArray(identity.SourceBaselines)!;
+        backing[0] = new SourceBaselineId("rewritten", HashB, "pdf-bytes");
+
+        Assert.Equal(Identity(), identity);
+        Assert.Equal(hashBefore, identity.GetHashCode());
+        Assert.Equal(CoreBook, identity.SourceBaselines[0]);
     }
 
     /// <summary>

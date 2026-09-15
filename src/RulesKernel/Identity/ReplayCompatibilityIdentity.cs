@@ -59,7 +59,9 @@ namespace RulesKernel.Identity;
 /// </summary>
 public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibilityIdentity>
 {
-    private readonly ImmutableArray<SourceBaselineId> _sourceBaselines;
+    // Never exposed. SourceBaselines hands out a copy, so nothing a caller does to what it
+    // receives can reach the entries equality and the hash code are computed from.
+    private readonly SourceBaselineId[] _sourceBaselines;
 
     /// <summary>The implemented ruleset revision in force.</summary>
     public RulesetVersion Ruleset { get; }
@@ -80,17 +82,15 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// </para>
     ///
     /// <para>
-    /// This raises the bar; it does not make the entries unreachable.
-    /// <c>ImmutableCollectionsMarshal.AsArray</c> still returns the live backing array, with
-    /// no reflection and no <c>unsafe</c>, and writing through it reproduces the original
-    /// defect exactly. Nothing in process can prevent that. What changes is that it stops
-    /// being an ordinary cast a caller might reach for by accident and becomes a documented
-    /// escape hatch whose name says what it is doing. Stating that plainly is the point: an
-    /// argument in a comment here is meant to be checkable, and "immutable therefore safe"
-    /// would not survive checking.
+    /// Each read returns a fresh copy. <c>ImmutableCollectionsMarshal.AsArray</c> returns the
+    /// backing array of whatever <see cref="ImmutableArray{T}"/> it is given, with no
+    /// reflection and no <c>unsafe</c>; when this property returned the identity's own
+    /// storage, writing through that array rewrote the identity in place. Now it rewrites a
+    /// copy. Reflection over the private field can still reach the entries, as it can reach
+    /// any field; nothing short of that can.
     /// </para>
     /// </summary>
-    public ImmutableArray<SourceBaselineId> SourceBaselines => _sourceBaselines;
+    public ImmutableArray<SourceBaselineId> SourceBaselines => ImmutableArray.Create(_sourceBaselines);
 
     /// <summary>
     /// The pseudorandom algorithm this engine consumes, or <see langword="null"/> when it
@@ -166,7 +166,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
 
         Ruleset = ruleset;
         ReplaySchema = replaySchema;
-        _sourceBaselines = [.. baselines];
+        _sourceBaselines = baselines;
         RandomAlgorithm = randomAlgorithm;
     }
 
