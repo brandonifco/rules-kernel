@@ -4,28 +4,28 @@
     {
       "name": "faa-part-107",
       "repository": "https://github.com/brandonifco/faa-part-107",
-      "commit": "3f11dde414060eb4fb7ff74940823ec6b0d5d758",
+      "commit": "4f0ab29c438d834c13b867b33de631284283f185",
       "modes": ["kernel", "analyzer"],
       "why": "a regulation: dated corpus, no randomness, § citations"
     },
     {
       "name": "hoyle-backgammon",
       "repository": "https://github.com/brandonifco/hoyle-backgammon",
-      "commit": "5ef209790d6e72ecb8c2b82828f7c6ddf9aba190",
+      "commit": "712e8cae8f5e13fae5666441f3bb1ddd9f4c3832",
       "modes": ["kernel", "analyzer"],
       "why": "a board game: consumes RulesKernel.Randomness and draw counts"
     },
     {
       "name": "srd-52-combat",
       "repository": "https://github.com/brandonifco/srd-52-combat",
-      "commit": "894897f55031321beb1c5c669c52cfe5376a7bb8",
+      "commit": "7367a8966e467d69077cc3a0093948e118ea1205",
       "modes": ["kernel", "analyzer"],
       "why": "a tabletop RPG: extracted PDF corpus, randomness"
     },
     {
       "name": "SRD_Combat",
       "repository": "https://github.com/brandonifco/SRD_Combat",
-      "commit": "9b91ffe523bba87b40ee921284192190b62ac449",
+      "commit": "847b310bfe056d73ddd63df0eff47c06be401bf1",
       "modes": ["analyzer"],
       "why": "the large hand-written engine docs/decisions/0015 first calibrated the analyzer against; net8.0 on SDK 8.0.x"
     }
