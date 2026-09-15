@@ -20,7 +20,10 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -54,14 +57,51 @@ PACKAGED = (
 A_DECLARATION = "RulesKernel.Identity.RulesetVersion.IsValid.get -> bool"
 
 
+CONSUMERS = {
+    "consumers": [
+        {"name": "engine-a", "repository": "https://example.invalid/a", "commit": "a" * 40,
+         "modes": ["kernel", "analyzer"], "why": "fixture"},
+        {"name": "engine-b", "repository": "https://example.invalid/b", "commit": "b" * 40,
+         "modes": ["kernel", "analyzer"], "why": "fixture"},
+        {"name": "engine-c", "repository": "https://example.invalid/c", "commit": "c" * 40,
+         "modes": ["analyzer"], "why": "fixture"},
+    ]
+}
+
+GIT_ENV = {
+    **os.environ,
+    "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+    "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+}
+
+
 class ReleaseTree:
-    """A tree shaped like this repository at a tag: every baseline promoted."""
+    """A git tree shaped like this repository at a tag: every baseline promoted, an earlier
+    release tagged v0.3.0, and nothing calibrated changed since it."""
 
     def __init__(self) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="release-checks-test-"))
         for project in PACKAGED:
             self.write(f"{project}/PublicAPI.Shipped.txt", "#nullable enable\n")
             self.write(f"{project}/PublicAPI.Unshipped.txt", "")
+        self.write("Directory.Build.props",
+                   "<Project>\n  <PropertyGroup>\n    <VersionPrefix>0.4.0</VersionPrefix>\n"
+                   "    <VersionSuffix></VersionSuffix>\n  </PropertyGroup>\n</Project>\n")
+        self.write("tools/calibration/consumers.json", json.dumps(CONSUMERS, indent=2) + "\n")
+        self.write("src/RulesKernel/Identity/Thing.cs", "namespace RulesKernel.Identity;\n")
+        self.write("src/RulesKernel.Analyzers/Rule.cs", "namespace RulesKernel.Analyzers;\n")
+        self.git("init", "-q")
+        self.commit("the 0.3.0 release")
+        self.git("tag", "v0.3.0")
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(["git", *args], cwd=self.root, env=GIT_ENV, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def commit(self, message: str) -> str:
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", message)
+        return self.git("rev-parse", "HEAD")
 
     def write(self, relative: str, content: str) -> Path:
         path = self.root / relative
@@ -176,6 +216,106 @@ class WhatDoesNotCountAsPendingTests(ReleaseCheckTestCase):
                         A_DECLARATION + "\n")
         self.assertEqual([], self.failures())
         self.assertEqual(len(PACKAGED), self.examined())
+
+
+class CalibrationRecordedTests(ReleaseCheckTestCase):
+    """docs/decisions/0021: a release that changes the kernel or the analyzer names the real
+    consumers it was calibrated against, at the tree being released."""
+
+    def check(self) -> list[str]:
+        return rel.check_calibration_recorded(self.root)[0]
+
+    def change(self, path: str) -> str:
+        self.tree.write(path, self.tree.root.joinpath(path).read_text(encoding="utf-8") + "// changed\n")
+        return self.tree.commit(f"change {path}")
+
+    def record(self, body: str) -> None:
+        self.tree.write("docs/calibration/0.4.0.md", "# Calibration for 0.4.0\n\n" + body)
+        self.tree.commit("record calibration")
+
+    @staticmethod
+    def kernel_section(commit: str, rows: str) -> str:
+        return ("## Kernel\n\nKernel commit: " + commit + "\n\n"
+                "| consumer | commit | pins | tests | result |\n|---|---|---|---|---|\n" + rows + "\n")
+
+    @staticmethod
+    def analyzer_section(commit: str, rows: str) -> str:
+        return ("## Analyzer\n\nKernel commit: " + commit + "\n\n"
+                "| consumer | commit | findings by rule | total |\n|---|---|---|---|\n" + rows + "\n")
+
+    GOOD_KERNEL_ROWS = "| engine-a | aaaaaaa | 1 | 10 | pass |\n| engine-b | bbbbbbb | 2 | 20 | pass |"
+
+    def test_nothing_calibrated_changed_so_no_record_is_needed(self) -> None:
+        self.tree.write("README.md", "prose\n")
+        self.tree.commit("docs only")
+        self.assertEqual([], self.check())
+
+    def test_a_kernel_change_without_a_record_fails(self) -> None:
+        self.change("src/RulesKernel/Identity/Thing.cs")
+        self.assertTrue(any("docs/calibration/0.4.0.md is missing" in f for f in self.check()), self.check())
+
+    def test_an_analyzer_change_without_a_record_fails(self) -> None:
+        self.change("src/RulesKernel.Analyzers/Rule.cs")
+        self.assertTrue(any("is missing" in f for f in self.check()))
+
+    def test_a_kernel_change_calibrated_against_two_consumers_passes(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(calibrated, self.GOOD_KERNEL_ROWS))
+        self.assertEqual([], self.check())
+
+    def test_one_consumer_is_not_enough_for_a_kernel_change(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(calibrated, "| engine-a | aaaaaaa | 1 | 10 | pass |"))
+        self.assertTrue(any("1 consumer(s) calibrated, 2 required" in f for f in self.check()), self.check())
+
+    def test_one_consumer_is_enough_for_an_analyzer_change(self) -> None:
+        calibrated = self.change("src/RulesKernel.Analyzers/Rule.cs")
+        self.record(self.analyzer_section(calibrated, "| engine-c | ccccccc | RK0001 3 | 3 |"))
+        self.assertEqual([], self.check())
+
+    def test_a_failing_consumer_does_not_count(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(
+            calibrated, "| engine-a | aaaaaaa | 1 | 10 | pass |\n| engine-b | bbbbbbb | 2 | - | FAIL |"))
+        self.assertTrue(any("engine-b did not pass" in f for f in self.check()))
+
+    def test_a_consumer_at_a_commit_the_manifest_does_not_pin_fails(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(
+            calibrated, "| engine-a | 1234567 | 1 | 10 | pass |\n| engine-b | bbbbbbb | 2 | 20 | pass |"))
+        self.assertTrue(any("engine-a was run at '1234567'" in f for f in self.check()))
+
+    def test_a_consumer_not_listed_for_the_mode_fails(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(
+            calibrated, self.GOOD_KERNEL_ROWS + "\n| engine-c | ccccccc | 1 | 5 | pass |"))
+        self.assertTrue(any("engine-c is not a kernel consumer" in f for f in self.check()))
+
+    def test_a_calibration_of_an_earlier_tree_fails(self) -> None:
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(calibrated, self.GOOD_KERNEL_ROWS))
+        self.assertTrue(any("changed after it" in f for f in self.check()), self.check())
+
+    def test_a_kernel_commit_outside_the_release_history_fails(self) -> None:
+        self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section("d" * 40, self.GOOD_KERNEL_ROWS))
+        self.assertTrue(any("is not in this release's history" in f for f in self.check()))
+
+    def test_a_record_for_the_kernel_does_not_cover_an_analyzer_change(self) -> None:
+        self.change("src/RulesKernel.Analyzers/Rule.cs")
+        calibrated = self.change("src/RulesKernel/Identity/Thing.cs")
+        self.record(self.kernel_section(calibrated, self.GOOD_KERNEL_ROWS))
+        self.assertTrue(any("no '## Analyzer' section" in f for f in self.check()))
+
+    def test_no_earlier_release_tag_is_a_failure_not_a_pass(self) -> None:
+        self.tree.git("tag", "-d", "v0.3.0")
+        self.assertTrue(any("no earlier release tag" in f for f in self.check()))
+
+    def test_the_tag_being_released_is_not_its_own_baseline(self) -> None:
+        self.change("src/RulesKernel/Identity/Thing.cs")
+        self.tree.git("tag", "v0.4.0")
+        self.assertTrue(any("is missing" in f for f in self.check()))
 
 
 class ACheckThatProvedNothingFailsTests(unittest.TestCase):

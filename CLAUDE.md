@@ -84,8 +84,14 @@ Cutting a release, in one reviewed PR:
 2. Promote every `PublicAPI.Unshipped.txt` into its `PublicAPI.Shipped.txt`. What is about
    to be published is shipped API by definition, and `tools/release-checks.py` fails the
    publish while any unshipped baseline still holds a declaration.
-3. `./scripts/validate.sh full`, then merge, then tag that commit `vX.Y.Z` and push the tag.
-4. Immediately move `main` to the next version, suffix restored.
+3. If the release changes `src/RulesKernel/` or `src/RulesKernel.Analyzers/`, calibrate it
+   against real consumers and commit the record in `docs/calibration/`, named for the version
+   ([ADR 0021](docs/decisions/0021-external-calibration-is-a-release-gate.md)):
+   `tools/calibration/run.sh kernel` (two consumers at least) and
+   `tools/calibration/run.sh analyzer` (one at least). `tools/release-checks.py` fails the
+   publish when the record is missing, names too few consumers, or calibrated an earlier tree.
+4. `./scripts/validate.sh full`, then merge, then tag that commit `vX.Y.Z` and push the tag.
+5. Immediately move `main` to the next version, suffix restored.
 
 If the tag does not follow the merge — a last check fails, a calibration finds something —
 put `VersionSuffix` back to `dev` on `main` straight away, keeping the same `VersionPrefix`.
@@ -93,7 +99,7 @@ The release has not shipped, so it is still the next one; a version number is no
 preparing to release it. See
 [ADR 0017](docs/decisions/0017-a-held-tag-returns-main-to-a-development-version.md).
 
-Do not shortcut step 4. Between the tag and that commit, `main` resolves to a version that
+Do not shortcut step 5. Between the tag and that commit, `main` resolves to a version that
 has been published — the exact state this cycle exists to make unreachable.
 
 `publish.yml` enforces what a reviewer cannot: it asks MSBuild for the **resolved**

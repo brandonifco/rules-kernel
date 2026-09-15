@@ -58,13 +58,17 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # The gate plus a calibration that builds and tests three real engines.
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Full history and tags: tools/release-checks.py compares this tag with the previous
+          # release to decide what must have been calibrated (docs/decisions/0021).
+          fetch-depth: 0
           # See build-and-test.yml for why: validate.sh full runs repo-controlled shell,
           # Python and MSBuild/test code, which has no legitimate reason to find a
           # credential sitting in .git/config.
@@ -111,8 +115,17 @@ jobs:
       # It runs here in `validate`, which finishes before `publish` starts, so it is
       # satisfied before anything is built or packed -- and it stays out of the job that
       # holds `id-token: write`, for the reason the header comment gives.
-      - name: Require every public API baseline to be promoted
+      - name: Require every public API baseline to be promoted, and calibration recorded
         run: tools/release-checks.py
+
+      # The recorded calibration is evidence about an earlier commit; this reruns it against
+      # the tagged tree. Every consumer in tools/calibration/consumers.json with the `kernel`
+      # mode is fetched at its pinned commit, pointed at a pack of this tree, and must build
+      # and pass its own tests. It pins the same SDK as this repository, so no override.
+      - name: Calibrate against real consumers
+        env:
+          CI: "true"
+        run: tools/calibration/run.sh kernel
 
   publish:
     needs: validate
