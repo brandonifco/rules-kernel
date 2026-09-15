@@ -11,22 +11,29 @@ pinned in github.com/brandonifco/faa-part-107, which is a second, independently 
 consumer of the same corpus. Where the two engines hit the same problem, that is stated,
 because two engines hitting it is stronger evidence than one.
 
-Counts: **8 findings.** Three are open questions about replay identity (1, 2 and 3). Two are
-accepted limitations for 0.4.0 (4, 5). The remaining three are evidence the kernel held up (6,
-7, 8).
+Counts: **8 findings.** Three are decided in
+[decision 0019](../../docs/decisions/0019-replay-identity-is-necessary-not-sufficient.md) (1,
+2 and 3): 1 changed the kernel, and 2 and 3 changed only what it claims. Two are accepted
+limitations for 0.4.0 (4, 5). The remaining three are evidence the kernel held up (6, 7, 8).
 
 ---
 
 ## 1. Two engines pinning the same bytes agree only by copying a spelling
 
-`HashDerivation` is free text compared ordinally. This probe's baseline equals
+`HashDerivation` was free text compared ordinally. This probe's baseline equals
 faa-part-107's only because the string `ecfr-versioner-xml` was copied from that engine's
 generated code. `eCFR-versioner-XML` names the same bytes and the same method, and it compares
 unequal. `ecfr-versioner-xml ` with a trailing space is accepted and also compares unequal,
 even though `SourceId` rejects surrounding whitespace for exactly that reason.
 
-Tests: `The_same_bytes_pinned_by_two_engines_compare_equal_only_if_they_spell_the_derivation_alike`,
-`A_derivation_with_a_trailing_space_is_accepted_and_compares_unequal`.
+**Decided (0019).** The kernel now fixes the form: lowercase ASCII letters and digits joined by
+single hyphens or dots. Both respellings above are rejected at construction. Different words
+for the same method (`ecfr-xml`) still compare unequal. That vocabulary belongs to the
+adapter, and the kernel does not guess at it.
+
+Tests: `The_same_bytes_pinned_by_two_engines_compare_equal_when_both_use_the_one_canonical_form`,
+`A_respelling_of_the_same_derivation_is_rejected_rather_than_compared_unequal`,
+`Different_words_for_the_same_derivation_still_compare_unequal`.
 
 ## 2. One corpus id holds one moment, and a moment is not a range
 
@@ -40,6 +47,13 @@ Two things follow. First, an engine answering on both sides of an amendment need
 snapshots of one regulation, and `ReplayCompatibilityIdentity` rejects two baselines with one
 `SourceId`. Second, the start date appears nowhere in the identity: two engines that assume
 different start dates have equal identities and give different answers for April 2021.
+
+**Decided (0019).** One id stays one moment. A citation names a corpus by id alone, so two
+moments under one id would make every citation ambiguous. An engine that needs editions gives
+each edition its own id, and its citations into different editions then differ, which is
+accurate, because they cite different text. The trusted date range is an engine assumption and
+belongs to its ruleset version, and nothing enforces that. This is recorded as an accepted
+limitation.
 
 Tests: `An_identity_cannot_pin_two_snapshots_of_one_regulation`,
 `Nothing_in_an_identity_records_the_date_range_its_snapshot_is_trusted_for`,
@@ -56,6 +70,9 @@ baselines in the other order form a different identity.
 
 Adopting an interpretation also changes the identity through a baseline while the ruleset
 version stays the same. That is the right place for the change, and it is worth stating.
+
+**Decided (0019).** Order carries no precedence, and the documentation now says so. Equality
+stays sequential, because the kernel cannot see whether an engine reads the order.
 
 Tests: `Listing_the_same_corpora_in_the_other_order_is_a_different_identity`,
 `Adopting_an_interpretation_changes_the_identity_without_changing_the_ruleset_version`.

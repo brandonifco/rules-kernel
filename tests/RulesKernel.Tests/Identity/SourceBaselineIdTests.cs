@@ -73,6 +73,39 @@ public sealed class SourceBaselineIdTests
             new SourceBaselineId("srd-5.2.1", Hash, "id-roster"));
     }
 
+    /// <summary>
+    /// The form of a derivation is fixed so that two engines naming the same bytes by the
+    /// same method compare equal (docs/decisions/0019). Every value a known consumer uses
+    /// passes; every spelling that differs only in case, padding or separators is rejected
+    /// rather than silently compared unequal.
+    /// </summary>
+    [Theory]
+    [InlineData("pdf-bytes")]
+    [InlineData("ecfr-versioner-xml")]
+    [InlineData("gutenberg-plain-text-including-boilerplate")]
+    [InlineData("srd-5.2.1-pdftotext-24.02.0-page-marked")]
+    [InlineData("sha256")]
+    public void A_derivation_in_canonical_form_is_accepted(string derivation)
+    {
+        Assert.Equal(derivation, new SourceBaselineId("core", Hash, derivation).HashDerivation);
+    }
+
+    [Theory]
+    [InlineData("eCFR-versioner-XML")]
+    [InlineData("pdf-bytes ")]
+    [InlineData(" pdf-bytes")]
+    [InlineData("pdf bytes")]
+    [InlineData("pdf_bytes")]
+    [InlineData("pdf--bytes")]
+    [InlineData("-pdf-bytes")]
+    [InlineData("pdf-bytes.")]
+    [InlineData("pdf/bytes")]
+    [InlineData("pdf-bytés")]
+    public void A_derivation_not_in_canonical_form_is_rejected(string derivation)
+    {
+        Assert.Throws<ArgumentException>(() => new SourceBaselineId("core", Hash, derivation));
+    }
+
     [Fact]
     public void A_baseline_must_say_what_its_hash_was_computed_over()
     {
