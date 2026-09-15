@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The code documentation shows, compiled and run. Every C# block in the repository's
+       living documentation is copied from a marked region in this project, and
+       the doc-samples check in tools/repo-checks.py fails when the two differ. README examples
+       that did not compile shipped in 0.2.0 and 0.3.0 because nothing compiled them. -->
+  <PropertyGroup>
+    <RootNamespace>RulesKernel.Documentation.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/RulesKernel/RulesKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

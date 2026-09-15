@@ -160,11 +160,11 @@ jobs:
       #
       # This step used to compare the tag to <VersionPrefix> alone, and that was a real
       # hole the moment main started carrying a prerelease suffix: a tree with
-      # VersionPrefix 0.3.0 + VersionSuffix dev passes a prefix comparison under tag
-      # v0.3.0, and then publishes 0.3.0-dev. A package whose version disagrees with the
+      # VersionPrefix X.Y.Z + VersionSuffix dev passes a prefix comparison under tag
+      # vX.Y.Z, and then publishes X.Y.Z-dev. A package whose version disagrees with the
       # tag it was cut from is the same class of provenance defect as the relabelled-pack
       # bug this workflow's header describes: for a library whose product is replay
-      # identity, "which commit is 0.3.0" must have exactly one answer, permanently.
+      # identity, "which commit is X.Y.Z" must have exactly one answer, permanently.
       # nuget.org will not let it be corrected afterwards -- a published version can be
       # unlisted, never deleted.
       #
