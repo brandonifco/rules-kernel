@@ -14,7 +14,7 @@
       "ruleskernel.randomness": {
         "type": "Project",
         "dependencies": {
-          "RulesKernel": "[0.2.0, )"
+          "RulesKernel": "[0.4.0-dev, )"
         }
       }
     },
@@ -31,7 +31,7 @@
       "ruleskernel.randomness": {
         "type": "Project",
         "dependencies": {
-          "RulesKernel": "[0.2.0, )"
+          "RulesKernel": "[0.4.0-dev, )"
         }
       }
     }
