@@ -167,6 +167,17 @@ class WhatDoesNotCountAsPendingTests(ReleaseCheckTestCase):
         self.assertEqual(len(PACKAGED), self.examined())
 
 
+    def test_a_baseline_in_a_nested_worktree_belongs_to_another_branch(self) -> None:
+        # Agent worktrees live under .claude/worktrees/. A worktree is a separate checkout,
+        # usually mid-change on another branch, so its unpromoted baselines say nothing
+        # about the tree being released -- and reporting them made a correctly promoted
+        # tree look like four failing ones.
+        self.tree.write(".claude/worktrees/agent-x/src/RulesKernel/PublicAPI.Unshipped.txt",
+                        A_DECLARATION + "\n")
+        self.assertEqual([], self.failures())
+        self.assertEqual(len(PACKAGED), self.examined())
+
+
 class ACheckThatProvedNothingFailsTests(unittest.TestCase):
     """Principle 3: a check whose inputs vanished must not report ok.
 

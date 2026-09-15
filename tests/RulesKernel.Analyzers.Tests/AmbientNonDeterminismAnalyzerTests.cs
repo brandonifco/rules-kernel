@@ -92,6 +92,30 @@ public sealed class AmbientNonDeterminismAnalyzerTests
     }
 
     [Fact]
+    public void A_banned_member_captured_as_a_delegate_is_still_found()
+    {
+        // Not called, so there is no invocation to see. The analyzer registered four
+        // operation kinds and MethodReference was not among them, so this reported nothing
+        // while the same member called one line later reported RK0001.
+        var captured = Wrap("System.Func<System.Guid> f = System.Guid.NewGuid;");
+
+        Assert.Equal(new[] { "RK0001" }, AnalyzerHarness.Diagnose(captured));
+    }
+
+    [Fact]
+    public void A_method_group_on_a_banned_receiver_reports_once_not_twice()
+    {
+        // The receiver already carries the finding. Two overlapping squiggles on one
+        // expression make a suppression ambiguous, which is why Inspect yields to the
+        // instance — a method group has to take that path rather than go around it.
+        // `System.Random.Shared.Next` is the method-group form of the control case: the
+        // property reference and the method reference are both over System.Random.
+        var onReceiver = Wrap("System.Func<int> f = System.Random.Shared.Next;");
+
+        Assert.Equal(new[] { "RK0001" }, AnalyzerHarness.Diagnose(onReceiver));
+    }
+
+    [Fact]
     public void Environment_TickCount_reports_as_a_clock_not_as_machine_state()
     {
         // Environment is banned as a whole type, but the member rule is checked first, so the

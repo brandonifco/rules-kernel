@@ -55,9 +55,18 @@ BASELINE_FILENAME = "PublicAPI.Unshipped.txt"
 
 # Build output and tool caches. A packed or restored tree can contain copies of a baseline
 # file under obj/, and those are not the repository's declaration of anything.
+#
+# `.claude` is here for a different reason: agent worktrees live under .claude/worktrees/,
+# and a worktree is a SEPARATE CHECKOUT of this repository, usually on another branch. Its
+# baselines are that branch's declaration, not this tree's. Without this the gate reports
+# every in-flight branch on the machine -- which it did, naming three sibling worktrees on a
+# tree that was itself correctly promoted. It fails safe (a stray checkout can only add
+# findings, never hide one) and CI never sees it, since actions/checkout produces a clean
+# tree. It is still wrong: a release gate must answer for the tree being released and
+# nothing else.
 IGNORED_PARTS = {
-    ".git", "bin", "obj", ".dotnet", ".venv", "__pycache__", "artifacts", "TestResults",
-    "node_modules", ".vs", "packages",
+    ".git", ".claude", "bin", "obj", ".dotnet", ".venv", "__pycache__", "artifacts",
+    "TestResults", "node_modules", ".vs", "packages",
 }
 
 
