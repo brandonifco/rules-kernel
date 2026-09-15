@@ -76,7 +76,7 @@ jobs:
       # NOT VERIFIED rather than ok when PyYAML is missing, which is the honest answer and a
       # failure, so the runner must actually have it.
       - name: Ensure PyYAML is available to the repository checks
-        run: python3 -m pip install --quiet --disable-pip-version-check pyyaml
+        run: python3 -m pip install --quiet --disable-pip-version-check --require-hashes -r tools/requirements.txt
 
       - name: Read the pinned SDK version
         id: sdk
