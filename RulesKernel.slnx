@@ -12,6 +12,7 @@
     <Project Path="tests/RulesKernel.Documentation.Tests/RulesKernel.Documentation.Tests.csproj" />
   </Folder>
   <Folder Name="/probes/">
+    <Project Path="probes/Part107Probe.Tests/Part107Probe.Tests.csproj" />
     <Project Path="probes/RegulatoryProbe.Tests/RegulatoryProbe.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A probe over 14 CFR Part 107, written to push on the parts of the kernel a tabletop
+       engine never reaches: the text in force on a date, a definition that lives in a corpus
+       the engine does not pin, an interpretation the engine records for itself, and waivers
+       whose validity depends on two different dates. References RulesKernel and nothing
+       else, like RegulatoryProbe.Tests. See probes/README.md and FINDINGS.md beside this
+       file. -->
+  <PropertyGroup>
+    <RootNamespace>Part107Probe</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/RulesKernel/RulesKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

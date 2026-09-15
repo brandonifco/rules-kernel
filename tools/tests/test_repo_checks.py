@@ -163,6 +163,8 @@ class Fixture:
                      project_refs=["../../src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj"])
         self.project("probes/RegulatoryProbe.Tests", "RegulatoryProbe.Tests", packable=False,
                      project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
+        self.project("probes/Part107Probe.Tests", "Part107Probe.Tests", packable=False,
+                     project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
         self.project("tests/RulesKernel.Documentation.Tests", "RulesKernel.Documentation.Tests",
                      packable=False, project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
         self.write("tests/RulesKernel.Documentation.Tests/Samples.cs", SAMPLES_CS)
