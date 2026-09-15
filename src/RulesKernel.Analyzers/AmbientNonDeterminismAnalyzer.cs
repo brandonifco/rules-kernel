@@ -239,9 +239,13 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         {
             IInvocationOperation invocation => invocation.Instance,
 
-            // A method group has a receiver just as a call does — `random.Next` where
-            // `random` is a System.Random field is two operations over the same banned type
-            // — so it yields to that receiver on exactly the terms above.
+            // A method group has a receiver just as a call does, so it yields on exactly the
+            // terms above: `System.Random.Shared.Next` is the property reference and the
+            // method reference over one banned type, and reporting both would put two
+            // overlapping squiggles on one expression. A method group on a field of a banned
+            // type -- `_random.Next` -- is not that shape and never was: the field's own
+            // symbol belongs to the consuming type, so the receiver does not match and the
+            // method reference reports once on its own.
             IMethodReferenceOperation method => method.Instance,
             IPropertyReferenceOperation property => property.Instance,
             IFieldReferenceOperation field => field.Instance,
