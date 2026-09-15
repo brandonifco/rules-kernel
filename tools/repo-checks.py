@@ -1086,7 +1086,7 @@ def _check_yaml(path: Path, rel: Path, result: CheckResult) -> None:
             "A malformed workflow file is not an error on GitHub: the workflow silently "
             "does not run, and with no branch protection CI simply stops existing. That "
             "is exactly the failure this check is for, so an unverifiable YAML file is a "
-            "failure rather than a pass. Install it: python3 -m pip install pyyaml"
+            "failure rather than a pass. Install it: python3 -m pip install --require-hashes -r tools/requirements.txt"
         ))
         return
     try:

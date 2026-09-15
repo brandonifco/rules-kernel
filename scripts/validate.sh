@@ -196,10 +196,11 @@ fi
 # The analyzer's unit tests drive it as a library, which proves the rules and proves nothing
 # about packaging. An analyzer that lands outside analyzers/dotnet/cs, or is built against a
 # Roslyn the consumer cannot load, passes all of them and then does nothing in a real build.
-# This packs it and builds a real net8.0 consumer against the .nupkg. `full` only: it packs
-# and restores, which the inner loop should not pay for on every run.
+# This packs it and builds a real net8.0 consumer against the .nupkg, then builds this
+# repository's own packaged projects, from a copy, with that analyzer attached. `full` only:
+# it packs and restores, which the inner loop should not pay for on every run.
 if [[ "$MODE" == "full" ]]; then
-  step "Analyzer reaches a consumer"
+  step "Analyzer reaches a consumer, and the kernel passes it"
   run "analyzer-probe" tools/analyzer-probe/check.sh || true
 fi
 
