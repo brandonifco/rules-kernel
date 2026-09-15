@@ -13,8 +13,11 @@ with one exception an engine opts into: `RulesKernel.Analyzers` carries the dete
 diagnostics into the consumer's own build
 ([ADR 0011](docs/decisions/0011-shipping-a-determinism-analyzer.md)).
 
-Where it cannot resolve a rule, an engine built on these primitives
-says so explicitly instead of guessing.
+What the kernel does not do is stop an engine from guessing. An operation that returns a bare
+value can return a guess, and nothing here can tell. Once an operation declares itself
+potentially non-total by returning `Resolution<T>`, the kernel makes the unresolved case
+something a caller has to name before it can reach a value
+([decision 0018](docs/decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
 The kernel is **referenced, not copied**. A correction made here reaches every engine built
 on it through a version bump, rather than being stranded in whichever engine happened to
@@ -102,30 +105,34 @@ without drawing a value, and never references it ([decision 0002](docs/decisions
 
 **Identity** — what makes two runs comparable.
 
+<!-- sample: identity -->
 ```csharp
 var identity = new ReplayCompatibilityIdentity(
     ruleset: new RulesetVersion("cfr-26-401k", 3),
     replaySchema: new ReplaySchemaVersion(1),
     sourceBaselines:
     [
-        new SourceBaselineId("cfr-26", hash, asOf: new DateOnly(2019, 3, 14)),
-        new SourceBaselineId("rev-proc-2019-20", otherHash, asOf: new DateOnly(2019, 5, 1)),
+        new SourceBaselineId("cfr-26", regulationHash, "extracted-xml", asOf: new DateOnly(2019, 3, 14)),
+        new SourceBaselineId("rev-proc-2019-20", noticeHash, "pdf-bytes", asOf: new DateOnly(2019, 5, 1)),
     ]);
 
-identity.IsDeterministicWithoutRandomness;  // true -- no generator involved
+bool noGenerator = identity.IsDeterministicWithoutRandomness;  // true -- no generator involved
 ```
 
 Corpora are plural and ordered, and each carries the moment it was pinned as well as its
-content hash. A hash proves two people read identical bytes; it does not say what those
-bytes were, and "what did this rule say on this date" is the question a regulatory engine
+content hash and what that hash was computed over. A hash proves two people read identical
+bytes; it does not say what those bytes were, and "what did this rule say on this date" is the question a regulatory engine
 exists to answer ([decision 0003](docs/decisions/0003-corpus-baselines-and-the-temporal-axis.md)).
+The derivation — `"extracted-xml"`, `"pdf-bytes"` — is there because a hash does not say what it
+is a hash *of* ([decision 0007](docs/decisions/0007-a-baseline-says-what-its-hash-covers.md)).
 
 **Provenance** — where a rule came from.
 
+<!-- sample: provenance -->
 ```csharp
-new SourceLocator("core-rules", "printed p. 45 / PDF p. 57");
-new SourceLocator("cfr-26", "§ 1.401(k)-1(b)(4)(ii)");
-new SourceLocator("boardgame", "rule 4.2.1");
+var page = new SourceLocator("core-rules", "printed p. 45 / PDF p. 57");
+var designation = new SourceLocator("cfr-26", "§ 1.401(k)-1(b)(4)(ii)");
+var numberedRule = new SourceLocator("boardgame", "rule 4.2.1");
 ```
 
 The citation's grammar belongs to the corpus's adapter. The kernel checks that one was
@@ -134,6 +141,7 @@ question, and whether it points at the right passage is the reviewer's.
 
 **Resolution** — how an engine declines to answer.
 
+<!-- sample: resolution -->
 ```csharp
 return Resolution<int>.FromUnresolved(new UnresolvedResult(
     UnresolvedReason.RequiresInterpretation,
@@ -143,8 +151,12 @@ return Resolution<int>.FromUnresolved(new UnresolvedResult(
 
 Five closed reasons, all about the engine's relationship to its corpus rather than about
 subject matter. An engine that is reproducible but guesses at unimplemented rules is
-reproducibly wrong; this is the half of the determinism contract that prevents it
-([decision 0004](docs/decisions/0004-unresolved-results-and-the-totality-burden.md)).
+reproducibly wrong, and this is how an engine avoids that. It does not prevent it. Whether an
+operation returns the union is the engine's decision and a reviewer's question — *why is this
+total?* ([decision 0004](docs/decisions/0004-unresolved-results-and-the-totality-burden.md)).
+What the type enforces begins after that decision: no path from a `Resolution<T>` to its value
+skips the unresolved case, though a handler can still discard it on purpose
+([decision 0018](docs/decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
 ## Verify it
 
@@ -186,6 +198,11 @@ tools/repo-checks.py
   on GitHub; it simply never runs.
 - **text-hygiene** — UTF-8, no BOM, LF, one trailing newline, and no bidi controls,
   zero-width characters, or non-ASCII identifiers.
+- **doc-samples** — every C# block in this repository's living documentation is a verbatim
+  copy of a region in `tests/RulesKernel.Documentation.Tests`, which the gate compiles and
+  runs. The examples above shipped in two releases without compiling.
+- **dev-version** — no living document names a development version other than the tree's
+  own. Decision records are exempt from both: they record what was true when written.
 
 A check that examined nothing reports `skip`, never `ok` — and a skip fails the run, because
 the exit code is the part the gate actually reads.
@@ -195,7 +212,7 @@ source. Reflection, aliasing, extension methods and source generation defeat the
 raise the cost of an accident; they are not a proof of absence.
 [ADR 0009](docs/decisions/0009-what-the-source-blacklists-do-not-prove.md) records which
 classes of bypass are known and deliberately unaddressed, and what would change that. The
-module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds 127 tests
+module docstring in `tools/repo-checks.py` says so too, and `tools/tests/` holds the tests
 that exist to show each check actually fails when it should.
 
 Public API changes to the four packaged assemblies are tracked separately, by
