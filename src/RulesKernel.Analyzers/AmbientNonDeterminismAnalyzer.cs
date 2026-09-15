@@ -8,9 +8,9 @@ using Microsoft.CodeAnalysis.Operations;
 namespace RulesKernel.Analyzers;
 
 /// <summary>
-/// Reports ambient non-determinism — entropy, clock, environment, concurrency,
-/// replay-unstable hashing, and ambient culture and time zone — in a project that
-/// references this package.
+/// Reports ambient non-determinism — entropy, clock, machine state (including culture and
+/// time zone), concurrency and replay-unstable hashing — in a project that references this
+/// package.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -78,11 +78,28 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         "Ambient clock is not replayable",
         "'{0}' reads an ambient clock; pass the instant in as an argument instead");
 
-    /// <summary>RK0003 — a result that reads the environment is machine-dependent.</summary>
+    /// <summary>
+    /// RK0003 — a result that reads ambient machine state, including the environment, the
+    /// current culture and the local time zone, is machine-dependent.
+    /// </summary>
     public static readonly DiagnosticDescriptor AmbientEnvironment = Rule(
         "RK0003",
-        "Ambient environment makes a result machine-dependent",
-        "'{0}' reads ambient machine state; a rules result must resolve from its arguments");
+
+        // "Ambient environment" was the title while this rule meant System.Environment.
+        // docs/decisions/0016 folded ambient culture and time zone in from RK0006, so the
+        // title names what every member below actually has in common.
+        "Ambient machine state makes a result machine-dependent",
+
+        // The old second clause was "a rules result must resolve from its arguments", and
+        // docs/decisions/0015 records what it did to eight of this rule's ten findings: it
+        // asserted that a line separator being concatenated into console output was a rules
+        // result, which it was not. The clause below claims only what the narrowed symbol
+        // set supports -- that a result derived from this value differs by machine -- and
+        // names the fix rather than restating the kernel's own contract at a consumer. It
+        // has to be true of the folded-in culture and time-zone members too, and it is:
+        // CultureInfo.CurrentCulture is read from the machine, a comparison or a format
+        // derived from it differs by machine, and the fix is to pass the culture in.
+        "'{0}' reads ambient machine state; a result derived from it differs by machine, so pass the value in as an argument instead");
 
     /// <summary>RK0004 — concurrency makes resolution order non-deterministic.</summary>
     public static readonly DiagnosticDescriptor AmbientConcurrency = Rule(
@@ -96,11 +113,18 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         "A runtime hash code is not replay-stable",
         "'{0}' is not stable across processes or releases; derive a replay-visible value with a pinned algorithm instead");
 
-    /// <summary>RK0006 — a result that reads ambient culture or time zone is machine-dependent.</summary>
-    public static readonly DiagnosticDescriptor AmbientCultureOrTimeZone = Rule(
-        "RK0006",
-        "Ambient culture and time zone make a result machine-dependent",
-        "'{0}' reads ambient culture or time-zone state; pass the culture or zone in as an argument instead");
+    // RK0006 is a gap, and it stays one. It existed here for ambient culture and time zone,
+    // never shipped, and was folded into RK0003 in docs/decisions/0016 -- the two rationale
+    // sentences were near-identical, one concept should need one suppression, and the
+    // calibration gave it zero findings against RK0003's ten. An id that was never published
+    // was never a contract, so it is removed rather than marked retired and leaves no trace
+    // beyond this number.
+    //
+    // Do not close the gap by renumbering RK0007. Numbering here is sequential and permanent
+    // for the reason docs/decisions/README.md gives for decision records: a number is how
+    // something is referred to from outside, and moving RK0007 down would change the
+    // identity of a rule whose meaning did not change. The gap costs nothing; tidying it
+    // costs the one guarantee these ids exist to give.
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
@@ -109,8 +133,7 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
             AmbientClock,
             AmbientEnvironment,
             AmbientConcurrency,
-            ReplayUnstableHashing,
-            AmbientCultureOrTimeZone);
+            ReplayUnstableHashing);
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -133,7 +156,28 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         ("System.Security.Cryptography.RandomNumberGenerator", AmbientEntropy),
         ("System.TimeProvider", AmbientClock),
         ("System.Diagnostics.Stopwatch", AmbientClock),
-        ("System.Environment", AmbientEnvironment),
+
+        // System.Environment is NOT here, and the asymmetry with tools/repo-checks.py is
+        // deliberate rather than an oversight, so it is written down where the next reader
+        // will look for it.
+        //
+        // That file bans `Environment.` as a whole-type prefix and is right to: every line
+        // of this repository's packaged code is a rules result, the kernel may not read the
+        // environment at all, and the rule before it named three members and let
+        // ProcessPath, ProcessorCount and NewLine through. That reasoning was carried into
+        // a consumer-facing rule without being re-derived, and docs/decisions/0015 measured
+        // the result -- ten findings in SRD_Combat, eight of them Environment.NewLine
+        // concatenated into console output and one of them Environment.Exit in a fault
+        // handler, reported as a *read* of machine state it does not perform.
+        //
+        // A consumer's application is not the kernel. It has a console UI, a file loader
+        // and an exit path, and none of those is a rules result. The lesson is the general
+        // one: a rule about what may appear anywhere in this repository does not transfer
+        // to a rule about what may appear anywhere in someone else's, and the members that
+        // survive below are the ones that make a *result* machine-dependent. A rule that is
+        // four-fifths noise on the first real codebase it meets gets suppressed project-
+        // wide, after which it is dead while still appearing to be on, which
+        // docs/decisions/0011 names as the expensive direction of error.
         ("System.Threading.Thread", AmbientConcurrency),
         ("System.Threading.Tasks.Parallel", AmbientConcurrency),
         ("System.Threading.Tasks.TaskFactory", AmbientConcurrency),
@@ -148,9 +192,10 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         ("System.HashCode", ReplayUnstableHashing),
     };
 
-    // Individual members of types that are otherwise entirely legitimate. Checked before the
-    // whole-type table, so Environment.TickCount reports as a clock rather than as ambient
-    // machine state.
+    // Individual members of types that are otherwise entirely legitimate. Still checked
+    // before the whole-type table: no entry below currently sits on a type that table also
+    // bans, but the two lists are independent, and a whole-type ban added later must not
+    // silently outrank the more specific rule a member names.
     private static readonly (string MetadataName, string Member, DiagnosticDescriptor Rule)[] BannedMembers =
     {
         ("System.Guid", "NewGuid", AmbientEntropy),
@@ -164,13 +209,52 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         ("System.Environment", "TickCount64", AmbientClock),
         ("System.Threading.Tasks.Task", "Run", AmbientConcurrency),
 
-        // Ambient machine state in exactly the sense System.Environment is: a result that
-        // reads any of these differs by machine, and the read is invisible at the call site
-        // of whatever formatted, parsed or compared a value downstream of it. This
-        // repository sets InvariantGlobalization, but that is this build, not a consumer's.
-        ("System.Globalization.CultureInfo", "CurrentCulture", AmbientCultureOrTimeZone),
-        ("System.Globalization.CultureInfo", "CurrentUICulture", AmbientCultureOrTimeZone),
-        ("System.TimeZoneInfo", "Local", AmbientCultureOrTimeZone),
+        // The System.Environment members that make a *result* machine-dependent, replacing
+        // the whole-type ban this rule used to carry; see the note in BannedTypes for why.
+        // The line is "would two machines running the same rules with the same arguments
+        // disagree because of this value", which admits the machine facts below and rejects
+        // NewLine (output formatting, and a caller who wants a platform separator in a
+        // transcript has a real reason for it), Exit and FailFast (process control, which
+        // reads nothing), and ExitCode.
+        ("System.Environment", "ProcessorCount", AmbientEnvironment),
+        ("System.Environment", "MachineName", AmbientEnvironment),
+        ("System.Environment", "UserName", AmbientEnvironment),
+        ("System.Environment", "UserDomainName", AmbientEnvironment),
+        ("System.Environment", "UserInteractive", AmbientEnvironment),
+        ("System.Environment", "OSVersion", AmbientEnvironment),
+        ("System.Environment", "Version", AmbientEnvironment),
+        ("System.Environment", "Is64BitOperatingSystem", AmbientEnvironment),
+        ("System.Environment", "Is64BitProcess", AmbientEnvironment),
+        ("System.Environment", "ProcessId", AmbientEnvironment),
+        ("System.Environment", "ProcessPath", AmbientEnvironment),
+        ("System.Environment", "CurrentDirectory", AmbientEnvironment),
+        ("System.Environment", "SystemDirectory", AmbientEnvironment),
+        ("System.Environment", "SystemPageSize", AmbientEnvironment),
+        ("System.Environment", "WorkingSet", AmbientEnvironment),
+        ("System.Environment", "StackTrace", AmbientEnvironment),
+        ("System.Environment", "CommandLine", AmbientEnvironment),
+        ("System.Environment", "GetCommandLineArgs", AmbientEnvironment),
+        ("System.Environment", "GetEnvironmentVariable", AmbientEnvironment),
+        ("System.Environment", "GetEnvironmentVariables", AmbientEnvironment),
+        ("System.Environment", "ExpandEnvironmentVariables", AmbientEnvironment),
+        ("System.Environment", "GetFolderPath", AmbientEnvironment),
+        ("System.Environment", "GetLogicalDrives", AmbientEnvironment),
+
+        // These three carried RK0006 until docs/decisions/0016 retired that id and folded
+        // them here. The coverage did not change; only the number a consumer suppresses did.
+        //
+        // They belong under a rule about reads that make a result machine-dependent, and the
+        // case against -- recorded in 0016 rather than lost -- is that ambient culture does
+        // more than ProcessorCount does: it changes what comparing, sorting, parsing and
+        // formatting *mean*, at call sites that name nothing ambient at all, so a consumer
+        // might reasonably have wanted to enforce culture-invariance while allowing machine
+        // reads. One suppression for one concept won, because the two rationale sentences
+        // were near-identical and the calibration gave RK0006 zero findings against
+        // RK0003's ten. This repository sets InvariantGlobalization, but that is this build,
+        // not a consumer's.
+        ("System.Globalization.CultureInfo", "CurrentCulture", AmbientEnvironment),
+        ("System.Globalization.CultureInfo", "CurrentUICulture", AmbientEnvironment),
+        ("System.TimeZoneInfo", "Local", AmbientEnvironment),
     };
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
@@ -370,8 +454,10 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
             // GetMembers returned, so compare the definition.
             var definition = symbol.OriginalDefinition;
 
-            // Members are checked before whole types, so Environment.TickCount reports as a
-            // clock rather than as ambient machine state.
+            // Members are checked before whole types, so a member that names its own rule
+            // always wins over a ban on its containing type. Nothing exercises that ordering
+            // today -- Environment.TickCount did, until RK0003 stopped banning the whole
+            // type -- and it is kept because the tables are edited independently.
             if (_members.TryGetValue(definition, out var rule)
                 || (definition.ContainingType is { } containing
                     && _types.TryGetValue(containing.OriginalDefinition, out rule)))
