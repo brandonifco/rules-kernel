@@ -29,3 +29,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0014](0014-warning-where-unordered-becomes-ordered.md) | Warning where unordered becomes ordered |
 | [0015](0015-calibrating-the-rule-set-before-it-freezes.md) | Calibrating the rule set before it freezes |
 | [0016](0016-retiring-rk0006-into-a-narrowed-rk0003.md) | Retiring RK0006 into a narrowed RK0003 |
+| [0017](0017-a-held-tag-returns-main-to-a-development-version.md) | A held tag returns main to a development version |

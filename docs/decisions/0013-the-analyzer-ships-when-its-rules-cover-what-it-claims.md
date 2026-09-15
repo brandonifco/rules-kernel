@@ -61,11 +61,15 @@ gates to say something about publishing.
 
 **This cannot be undone by accident.** The release gate from
 [0010](0010-enforcement-stops-at-the-package-boundary.md) refuses to publish while any
-`PublicAPI.Unshipped.txt` is non-empty, and the analyzer's eight declarations are
-deliberately unpromoted. Tagging today fails, loudly, before anything is packed.
+`PublicAPI.Unshipped.txt` is non-empty, and the analyzer's declarations were unpromoted when
+this was written, so tagging that day would have failed before anything was packed.
 
-When the rules land, the release PR promotes all four baselines, clears `VersionSuffix` per
-[0012](0012-a-development-tree-is-not-a-release-candidate.md), and tags.
+*Superseded in fact, not in decision:* the release PR has since promoted all four baselines,
+so that particular guard no longer stands between this repository and a tag. What holds the
+tag now is [0015](0015-calibrating-the-rule-set-before-it-freezes.md), and what returns `main`
+to a development version while it is held is
+[0017](0017-a-held-tag-returns-main-to-a-development-version.md). The decision recorded here
+— that the analyzer ships only when its rules cover what the package claims — is unchanged.
 
 ## What would change this
 
