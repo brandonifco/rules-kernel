@@ -53,9 +53,22 @@ dotnet pack src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj \
 # An isolated package root, so this can neither read nor poison the machine's real cache.
 export NUGET_PACKAGES="$WORK/packages"
 
+# The compiler, not just the target framework. The Roslyn pin in Directory.Packages.props
+# exists so the analyzer loads under SDK 8.0.x, whose compiler is Roslyn 4.8
+# (docs/decisions/0011). A consumer scaffolded under $WORK finds no global.json and builds with
+# the newest SDK on the machine, so until this was added every run of this probe loaded the
+# analyzer into a current compiler, and the floor it claims to protect was never exercised.
+SDK8="$(cd "$WORK" && dotnet --list-sdks | awk '/^8\.0\./ { version = $1 } END { print version }')"
+if [[ -z "$SDK8" ]]; then
+  echo "FAIL: no .NET 8.0 SDK is installed, so nothing here can load the analyzer under the"
+  echo "      Roslyn 4.8 compiler it is pinned for. CI installs one (build-and-test.yml)."
+  exit 1
+fi
+
 scaffold() {
   local dir="$1" body="$2"
   mkdir -p "$dir"
+  printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' "$SDK8" > "$dir/global.json"
   cat > "$dir/nuget.config" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -93,7 +106,21 @@ scaffold "$WORK/clean" '    public static int Resolve(int seed, int bound) => (s
 
 status=0
 
-if dotnet build "$WORK/dirty/Consumer.csproj" -c Release >"$WORK/dirty.log" 2>&1; then
+selected="$(cd "$WORK/dirty" && dotnet --version)"
+if [[ "$selected" != "$SDK8" ]]; then
+  echo "FAIL: the consumer resolved SDK $selected, not $SDK8; the Roslyn 4.8 floor is not what ran"
+  exit 1
+fi
+echo "ok   consumers build with SDK $SDK8, the compiler the analyzer's Roslyn pin is for"
+
+# Both builds run FROM the consumer's directory. The dotnet host resolves global.json from the
+# working directory, not from the project path, so `dotnet build "$WORK/dirty/Consumer.csproj"`
+# run from the repository used the repository's SDK and ignored the pin above. That was
+# verified: with the analyzer rebuilt against Roslyn 5.0, the old invocation still reported ok,
+# and this one fails with CS9057. The shared compiler server is off so a server started by
+# another SDK can never be the compiler that answers.
+
+if (cd "$WORK/dirty" && dotnet build Consumer.csproj -c Release -p:UseSharedCompilation=false) >"$WORK/dirty.log" 2>&1; then
   echo "FAIL: a consumer calling Random.Shared built successfully; the analyzer did not reach it"
   status=1
 elif ! grep -q 'RK0001' "$WORK/dirty.log"; then
@@ -104,7 +131,7 @@ else
   echo "ok   a consumer calling Random.Shared fails with RK0001"
 fi
 
-if dotnet build "$WORK/clean/Consumer.csproj" -c Release >"$WORK/clean.log" 2>&1; then
+if (cd "$WORK/clean" && dotnet build Consumer.csproj -c Release -p:UseSharedCompilation=false) >"$WORK/clean.log" 2>&1; then
   echo "ok   a consumer resolving from its arguments builds clean"
 else
   echo "FAIL: a consumer with no ambient input failed to build"
