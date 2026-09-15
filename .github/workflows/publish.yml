@@ -80,10 +80,17 @@ jobs:
         id: sdk
         run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"
 
+      # The 8.0.x install is for its runtime, not its SDK: validate.sh full runs
+      # tools/package-probe/check.sh, which executes a real net8.0 consumer against the
+      # packed packages. Without a .NET 8 runtime that half honestly reports `skip`, and
+      # this is the one workflow where skipping it matters most -- it gates a release, and
+      # a net8.0-hostile package is exactly what 0.1.0 shipped. See build-and-test.yml.
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: ${{ steps.sdk.outputs.version }}
+          dotnet-version: |
+            8.0.x
+            ${{ steps.sdk.outputs.version }}
 
       - name: Validate before publishing
         env:
