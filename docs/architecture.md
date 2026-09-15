@@ -15,7 +15,7 @@ RulesKernel.Randomness   PCG32, bias-free bounded draws       depends on RulesKe
       ^
 RulesKernel.Testing      scripted test doubles                depends on RulesKernel.Randomness
 
-RulesKernel.Analyzers    RK0001-RK0004 over a consumer's code depends on nothing
+RulesKernel.Analyzers    RK0001-RK0007 over a consumer's code depends on nothing
 ```
 
 `RulesKernel.Analyzers` stands outside the stack rather than on top of it. It references no
@@ -84,11 +84,24 @@ build on `Random.Shared`, `new Random()`, `DateTime.UtcNow`, `Guid.NewGuid()`, `
 core-boundary` additionally forbids the kernel itself from touching the filesystem, a clock,
 the environment, the network, or randomness.
 
-Order-dependent iteration is **not** mechanically checked, and saying otherwise would be the
-kind of claim this document exists to avoid. `--only ordering` catches sorting an ordered
-result after the fact, which is the failure mode that actually recurs. It does not catch
-enumerating a `Dictionary` or a `HashSet`, or anything else whose order is an implementation
-detail of the runtime. That one is a review obligation, not a gate.
+Order-dependent iteration is checked in two places, and neither of them is
+`tools/repo-checks.py`'s job. `--only ordering` catches sorting an ordered result after the
+fact, which is the failure mode that actually recurs. It does not catch enumerating a
+`Dictionary` or a `HashSet`: it is a pattern match over source text and has no notion of what
+a type is.
+
+What does catch that is RK0007 in `RulesKernel.Analyzers`, which warns when an unordered
+collection is materialized into an ordered one without an explicit sort — a `Dictionary` or
+`HashSet` walked into a `List<T>`, a `StringBuilder`, an array or a `ToList()`, with no
+`OrderBy` in between ([ADR 0014](decisions/0014-warning-where-unordered-becomes-ordered.md)).
+Two limits on that, both deliberate. It is a warning in an **opt-in** package analysing a
+**consumer's** code, so it is not a gate on this repository at all. And it stays silent
+wherever it cannot tell — a call it cannot see into, an interface-typed source, a LINQ
+operator it does not model — because a false positive costs a consumer more than a false
+negative. ADR 0014 lists the known false negatives.
+
+So unordered iteration inside *this* repository's own source remains a review obligation.
+Nothing here runs the analyzer over the kernel.
 
 All three checks are pattern matches over source text, so reflection, aliasing and source
 generation walk past them. [ADR 0009](decisions/0009-what-the-source-blacklists-do-not-prove.md)

@@ -40,8 +40,12 @@ Known, deliberately unaddressed classes of bypass:
 - **A helper in another assembly.** The blacklist is scoped to projects this repository
   publishes; a call into anything else is invisible to it.
 - **Source generation.** The generated tree is not on disk when the check runs.
-- **Order-dependent iteration** over `Dictionary` or `HashSet`, which
-  `docs/architecture.md` already records as a review obligation rather than a gate.
+- **Order-dependent iteration** over `Dictionary` or `HashSet`. These checks still do not
+  see it, and cannot: order is a property of a type, and a text match has no types.
+  [0014](0014-warning-where-unordered-becomes-ordered.md) closes it where it can be closed
+  — RK0007 in the analyzer, over a *consumer's* code, when such a collection is materialized
+  into an ordered one without an explicit sort. Inside this repository it remains a review
+  obligation, because nothing here runs the analyzer over the kernel's own source.
 
 They are unaddressed because each is defeated by renaming, and a blacklist over source text
 cannot close the class — only the instance. Every new bypass is a new pattern, the list

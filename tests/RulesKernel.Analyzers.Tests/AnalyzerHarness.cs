@@ -30,7 +30,13 @@ internal static class AnalyzerHarness
             "fixture does not compile: " + string.Join("; ", compileErrors.Select(d => d.ToString())));
 
         var reported = compilation
-            .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new AmbientNonDeterminismAnalyzer()))
+            // Every analyzer in the package runs over every fixture, rather than each test
+            // choosing its own. A rule that fires on another rule's negative fixture is a
+            // false positive on code this repository has already asserted is clean, and
+            // running them together is what makes that show up as a failing test.
+            .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(
+                new AmbientNonDeterminismAnalyzer(),
+                new UnorderedMaterializationAnalyzer()))
             .GetAnalyzerDiagnosticsAsync()
             .GetAwaiter()
             .GetResult();
