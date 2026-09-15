@@ -12,6 +12,11 @@ public sealed class AmbientNonDeterminismAnalyzerTests
     [InlineData("var x = System.Environment.ProcessorCount;", "RK0003")]
     [InlineData("var x = System.Threading.Tasks.Task.Run(() => 1);", "RK0004")]
     [InlineData("var x = System.Threading.Tasks.Parallel.For(0, 1, _ => { });", "RK0004")]
+    [InlineData("var x = \"x\".GetHashCode();", "RK0005")]
+    [InlineData("var x = System.HashCode.Combine(1, 2);", "RK0005")]
+    [InlineData("var x = System.Globalization.CultureInfo.CurrentCulture.Name;", "RK0006")]
+    [InlineData("var x = System.Globalization.CultureInfo.CurrentUICulture.Name;", "RK0006")]
+    [InlineData("var x = System.TimeZoneInfo.Local;", "RK0006")]
     public void Reports_the_rule_for_each_kind_of_ambient_input(string statement, string expected)
     {
         Assert.Contains(expected, AnalyzerHarness.Diagnose(Wrap(statement)));
@@ -121,6 +126,183 @@ public sealed class AmbientNonDeterminismAnalyzerTests
         // Environment is banned as a whole type, but the member rule is checked first, so the
         // diagnostic a reader gets names the actual problem.
         Assert.Equal(new[] { "RK0002" }, AnalyzerHarness.Diagnose(Wrap("var x = System.Environment.TickCount;")));
+    }
+
+    // RK0005 is the one rule whose subject has a legitimate home. The assertions below are
+    // what stop it from being a rule nobody can keep: ReplayCompatibilityIdentity in this
+    // repository's own kernel writes exactly the first shape, and docs/decisions/0011 records
+    // that a false positive costs a consumer more than a false negative, because they cannot
+    // fix it -- only suppress it or drop the package.
+
+    [Fact]
+    public void HashCode_inside_a_GetHashCode_override_reports_nothing()
+    {
+        // This is ReplayCompatibilityIdentity.GetHashCode, near enough to copy. It is
+        // correct .NET: a hashed collection wants a per-process bucket, not a fingerprint.
+        var idiomatic = """
+            public sealed class Identity
+            {
+                private readonly int _left;
+                private readonly string _right;
+
+                public Identity(int left, string right)
+                {
+                    _left = left;
+                    _right = right;
+                }
+
+                public override int GetHashCode()
+                {
+                    var hash = new System.HashCode();
+                    hash.Add(_left);
+                    hash.Add(_right);
+                    return hash.ToHashCode();
+                }
+            }
+            """;
+
+        Assert.Empty(AnalyzerHarness.Diagnose(idiomatic));
+    }
+
+    [Fact]
+    public void Combine_and_a_member_hash_inside_a_GetHashCode_override_report_nothing()
+    {
+        var idiomatic = """
+            public sealed class Identity
+            {
+                private readonly string _name;
+
+                public Identity(string name) => _name = name;
+
+                public override int GetHashCode() =>
+                    System.HashCode.Combine(_name.GetHashCode(), 7);
+            }
+            """;
+
+        Assert.Empty(AnalyzerHarness.Diagnose(idiomatic));
+    }
+
+    [Fact]
+    public void A_lambda_inside_a_GetHashCode_override_reports_nothing()
+    {
+        // A lambda is its own IMethodSymbol, so a suppression that looked only at the
+        // immediately enclosing symbol would report here -- on the same legitimate use, one
+        // level down. The walk goes up ContainingSymbol for exactly this.
+        var nested = """
+            using System.Linq;
+
+            public sealed class Identity
+            {
+                private readonly int[] _parts = new int[0];
+
+                public override int GetHashCode() =>
+                    _parts.Aggregate(0, (running, part) => System.HashCode.Combine(running, part));
+            }
+            """;
+
+        Assert.Empty(AnalyzerHarness.Diagnose(nested));
+    }
+
+    [Fact]
+    public void An_equality_comparer_implementation_reports_nothing()
+    {
+        // The signature is IEqualityComparer's, not the consumer's; there is nothing they
+        // could restructure to avoid a diagnostic here. Both spellings are covered because
+        // FindImplementationForInterfaceMember answers for the implicit form too.
+        var comparer = """
+            public sealed class OrdinalComparer : System.Collections.Generic.IEqualityComparer<string>
+            {
+                public bool Equals(string? left, string? right) => left == right;
+
+                public int GetHashCode(string value) => System.HashCode.Combine(value.GetHashCode());
+            }
+            """;
+
+        Assert.Empty(AnalyzerHarness.Diagnose(comparer));
+    }
+
+    [Fact]
+    public void A_records_compiler_generated_equality_reports_nothing()
+    {
+        // The synthesised GetHashCode has no source body, so no operation action runs over
+        // it. That is asserted rather than assumed: "reports nothing" is otherwise
+        // indistinguishable from a rule that silently stopped working.
+        var generated = """
+            public sealed record Identity(string Name, int Revision);
+            """;
+
+        Assert.Empty(AnalyzerHarness.Diagnose(generated));
+    }
+
+    [Fact]
+    public void The_same_call_outside_a_GetHashCode_override_is_still_reported()
+    {
+        // The negative fixtures above are only evidence if the positive one fires on the
+        // identical expression. Seeding from a hash is the mistake docs/decisions/0005
+        // records a predecessor engine writing a SplitMix64 finaliser to avoid.
+        var seeding = Wrap("var seed = System.HashCode.Combine(name.GetHashCode(), 7);", parameters: "string name");
+
+        Assert.Equal(new[] { "RK0005", "RK0005" }, AnalyzerHarness.Diagnose(seeding));
+    }
+
+    [Fact]
+    public void A_helper_called_from_GetHashCode_is_still_reported()
+    {
+        // The line is lexical, and this is the edge it leaves over-reporting rather than
+        // under-reporting. Following the call would need a call graph an operation action
+        // does not have, and approximating one would suppress every hash reachable from any
+        // GetHashCode in the compilation -- including the seed derivation above. Pinned as a
+        // test so the trade-off is a decision on record rather than a surprise in a
+        // consumer's build.
+        var helper = """
+            public sealed class Identity
+            {
+                private readonly string _name = "";
+
+                public override int GetHashCode() => Mix(_name);
+
+                private static int Mix(string value) => System.HashCode.Combine(value);
+            }
+            """;
+
+        Assert.Equal(new[] { "RK0005" }, AnalyzerHarness.Diagnose(helper));
+    }
+
+    [Fact]
+    public void A_using_alias_does_not_hide_ambient_culture()
+    {
+        // RK0006's half of what docs/decisions/0009 says a pattern blacklist cannot close.
+        var aliased = """
+            using Culture = System.Globalization.CultureInfo;
+
+            public static class Consumer
+            {
+                public static object Resolve() => Culture.CurrentCulture;
+            }
+            """;
+
+        Assert.Equal(new[] { "RK0006" }, AnalyzerHarness.Diagnose(aliased));
+    }
+
+    [Fact]
+    public void Reading_a_member_of_the_ambient_culture_reports_once_not_twice()
+    {
+        // `CurrentCulture.Name` is the property reference on the banned member wrapped in
+        // another property reference. The outer one yields, as it does for entropy.
+        Assert.Equal(
+            new[] { "RK0006" },
+            AnalyzerHarness.Diagnose(Wrap("var x = System.Globalization.CultureInfo.CurrentCulture.Name;")));
+    }
+
+    [Fact]
+    public void An_explicitly_passed_culture_reports_nothing()
+    {
+        // The fix RK0006 asks for has to be silent, or the rule teaches nothing.
+        var passed = Wrap(
+            "var x = value.ToString(culture);",
+            parameters: "int value, System.Globalization.CultureInfo culture");
+
+        Assert.Empty(AnalyzerHarness.Diagnose(passed));
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -7,8 +8,9 @@ using Microsoft.CodeAnalysis.Operations;
 namespace RulesKernel.Analyzers;
 
 /// <summary>
-/// Reports ambient non-determinism — entropy, clock, environment and concurrency — in a
-/// project that references this package.
+/// Reports ambient non-determinism — entropy, clock, environment, concurrency,
+/// replay-unstable hashing, and ambient culture and time zone — in a project that
+/// references this package.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -59,9 +61,27 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         "Concurrency makes resolution order non-deterministic",
         "'{0}' introduces concurrency; an ordered history is the evidence a run was deterministic");
 
+    /// <summary>RK0005 — a runtime hash code is not stable enough to be replay-visible.</summary>
+    public static readonly DiagnosticDescriptor ReplayUnstableHashing = Rule(
+        "RK0005",
+        "A runtime hash code is not replay-stable",
+        "'{0}' is not stable across processes or releases; derive a replay-visible value with a pinned algorithm instead");
+
+    /// <summary>RK0006 — a result that reads ambient culture or time zone is machine-dependent.</summary>
+    public static readonly DiagnosticDescriptor AmbientCultureOrTimeZone = Rule(
+        "RK0006",
+        "Ambient culture and time zone make a result machine-dependent",
+        "'{0}' reads ambient culture or time-zone state; pass the culture or zone in as an argument instead");
+
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-        ImmutableArray.Create(AmbientEntropy, AmbientClock, AmbientEnvironment, AmbientConcurrency);
+        ImmutableArray.Create(
+            AmbientEntropy,
+            AmbientClock,
+            AmbientEnvironment,
+            AmbientConcurrency,
+            ReplayUnstableHashing,
+            AmbientCultureOrTimeZone);
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -89,6 +109,14 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         ("System.Threading.Tasks.Parallel", AmbientConcurrency),
         ("System.Threading.Tasks.TaskFactory", AmbientConcurrency),
         ("System.Linq.ParallelEnumerable", AmbientConcurrency),
+
+        // Every member of System.HashCode feeds one accumulator whose seed is randomised per
+        // process, so there is no subset of it that is replay-stable. docs/decisions/0005
+        // records that a predecessor engine hand-rolled a SplitMix64 finaliser specifically
+        // to avoid this type: a value derived from it agrees with itself all afternoon and
+        // disagrees with yesterday's transcript -- reproducible within a process, different
+        // across runs, which is the worst failure mode available here.
+        ("System.HashCode", ReplayUnstableHashing),
     };
 
     // Individual members of types that are otherwise entirely legitimate. Checked before the
@@ -106,6 +134,14 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
         ("System.Environment", "TickCount", AmbientClock),
         ("System.Environment", "TickCount64", AmbientClock),
         ("System.Threading.Tasks.Task", "Run", AmbientConcurrency),
+
+        // Ambient machine state in exactly the sense System.Environment is: a result that
+        // reads any of these differs by machine, and the read is invisible at the call site
+        // of whatever formatted, parsed or compared a value downstream of it. This
+        // repository sets InvariantGlobalization, but that is this build, not a consumer's.
+        ("System.Globalization.CultureInfo", "CurrentCulture", AmbientCultureOrTimeZone),
+        ("System.Globalization.CultureInfo", "CurrentUICulture", AmbientCultureOrTimeZone),
+        ("System.TimeZoneInfo", "Local", AmbientCultureOrTimeZone),
     };
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
@@ -139,12 +175,37 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        if (types.Count == 0 && members.Count == 0)
+        // Object.GetHashCode cannot live in either table above: it is not a member of a
+        // banned type, it is a member of every type there is. It is matched by walking the
+        // override chain instead, which is what makes a call on a string, on an int and on a
+        // consumer's own type one rule rather than an open-ended list of receivers -- the
+        // difference docs/decisions/0009 says only symbol resolution can make.
+        var objectGetHashCode = context.Compilation
+            .GetSpecialType(SpecialType.System_Object)
+            .GetMembers("GetHashCode")
+            .OfType<IMethodSymbol>()
+            .FirstOrDefault(method => method.Parameters.Length == 0);
+
+        // Needed to recognise the second legitimate home for a runtime hash; see below.
+        var equalityComparers = new List<INamedTypeSymbol>();
+        foreach (var metadataName in new[]
+                 {
+                     "System.Collections.Generic.IEqualityComparer`1",
+                     "System.Collections.IEqualityComparer",
+                 })
+        {
+            if (context.Compilation.GetTypeByMetadataName(metadataName) is { } comparer)
+            {
+                equalityComparers.Add(comparer);
+            }
+        }
+
+        if (types.Count == 0 && members.Count == 0 && objectGetHashCode is null)
         {
             return;
         }
 
-        var lookup = new Lookup(types, members);
+        var lookup = new Lookup(types, members, objectGetHashCode, equalityComparers);
 
         // MethodReference is here because a banned member captured as a delegate is never an
         // Invocation: `Func<Guid> f = Guid.NewGuid;` binds the same symbol a call would and
@@ -164,13 +225,19 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
     {
         private readonly Dictionary<INamedTypeSymbol, DiagnosticDescriptor> _types;
         private readonly Dictionary<ISymbol, DiagnosticDescriptor> _members;
+        private readonly IMethodSymbol? _objectGetHashCode;
+        private readonly List<INamedTypeSymbol> _equalityComparers;
 
         internal Lookup(
             Dictionary<INamedTypeSymbol, DiagnosticDescriptor> types,
-            Dictionary<ISymbol, DiagnosticDescriptor> members)
+            Dictionary<ISymbol, DiagnosticDescriptor> members,
+            IMethodSymbol? objectGetHashCode,
+            List<INamedTypeSymbol> equalityComparers)
         {
             _types = types;
             _members = members;
+            _objectGetHashCode = objectGetHashCode;
+            _equalityComparers = equalityComparers;
         }
 
         internal void Inspect(OperationAnalysisContext context)
@@ -192,6 +259,20 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
             }
 
             var (rule, definition) = matched;
+
+            // RK0005 is the one rule with a legitimate home, and that home is why it is a
+            // rule about *where* a hash is used rather than a ban on an API.
+            // ReplayCompatibilityIdentity.GetHashCode in this repository's own kernel builds
+            // its hash with System.HashCode, correctly: a hashed collection wants a
+            // per-process bucket, not a fingerprint. Reporting there would be a false
+            // positive in the single most idiomatic shape in .NET, and docs/decisions/0011
+            // records that a false positive costs a consumer far more than a false negative
+            // -- they cannot fix it, only suppress it or drop the package.
+            if (ReferenceEquals(rule, ReplayUnstableHashing)
+                && IsWithinHashCodeImplementation(context.ContainingSymbol))
+            {
+                return;
+            }
 
             var name = definition.ContainingType is null
                 ? definition.Name
@@ -221,7 +302,120 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
                 return (rule, definition);
             }
 
+            // A string's is the case that matters most: .NET randomises string hashing per
+            // process, so a seed or a "stable" id derived from it is reproducible all
+            // afternoon and different tomorrow.
+            if (definition is IMethodSymbol method && OverridesObjectGetHashCode(method))
+            {
+                return (ReplayUnstableHashing, definition);
+            }
+
             return null;
+        }
+
+        // Whether a symbol is Object.GetHashCode or any override of it, at any depth.
+        private bool OverridesObjectGetHashCode(IMethodSymbol method)
+        {
+            if (_objectGetHashCode is null || method.Parameters.Length != 0)
+            {
+                return false;
+            }
+
+            for (IMethodSymbol? current = method.OriginalDefinition;
+                 current is not null;
+                 current = current.OverriddenMethod?.OriginalDefinition)
+            {
+                if (SymbolEqualityComparer.Default.Equals(current, _objectGetHashCode))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Whether the operation sits inside a member whose entire job is producing a hash
+        // code for a hashed collection.
+        //
+        // The walk goes up ContainingSymbol rather than inspecting only the immediately
+        // enclosing symbol, because a lambda or a local function inside GetHashCode is its
+        // own IMethodSymbol. Combining hashes inside a lambda in a GetHashCode body is the
+        // same legitimate use one level down, and reporting it would be exactly the false
+        // positive this suppression exists to prevent.
+        //
+        // The line is drawn lexically, and deliberately. A private helper *called from*
+        // GetHashCode is not suppressed: following the call would need a call graph, which
+        // an operation action does not have, and the whole-compilation approximation of one
+        // cuts the wrong way -- it would suppress any hashing reachable from a GetHashCode
+        // anywhere in the compilation, including the seed derivation docs/decisions/0005
+        // says an engine will be tempted to write. Under-reporting is the preference
+        // docs/decisions/0011 states, and this is the one place the surgical choice
+        // over-reports instead, so it is named here rather than left to be discovered: a
+        // consumer with a shared hash helper suppresses RK0005 on that helper, and the
+        // suppression then reads as the deliberate act it is.
+        //
+        // A record's compiler-generated equality needs no branch here. Its GetHashCode has
+        // no source body, so no operation action ever runs over it -- asserted in
+        // tests/RulesKernel.Analyzers.Tests rather than assumed, because "it reports
+        // nothing" is indistinguishable from a rule that silently stopped working.
+        private bool IsWithinHashCodeImplementation(ISymbol? symbol)
+        {
+            for (; symbol is not null; symbol = symbol.ContainingSymbol)
+            {
+                if (symbol is INamedTypeSymbol or INamespaceSymbol)
+                {
+                    // A type boundary ends the walk. Stopping here means the rule can never
+                    // suppress on the strength of an enclosing *type* looking hash-related,
+                    // which is the loosest thing this could accidentally become.
+                    return false;
+                }
+
+                if (symbol is IMethodSymbol method
+                    && (OverridesObjectGetHashCode(method) || ImplementsComparerGetHashCode(method)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Whether a method is this type's implementation of the GetHashCode declared by
+        // IEqualityComparer, generic or not. A comparer is the second idiomatic home for a
+        // runtime hash, and a consumer writing one cannot restructure their way out of a
+        // diagnostic on it -- the signature is the interface's, not theirs.
+        private bool ImplementsComparerGetHashCode(IMethodSymbol method)
+        {
+            if (method.ContainingType is not { } containingType)
+            {
+                return false;
+            }
+
+            foreach (var comparer in _equalityComparers)
+            {
+                foreach (var implemented in containingType.AllInterfaces)
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(implemented.OriginalDefinition, comparer))
+                    {
+                        continue;
+                    }
+
+                    foreach (var member in implemented.GetMembers("GetHashCode"))
+                    {
+                        // FindImplementationForInterfaceMember answers for the explicit and
+                        // the implicit form alike, so neither spelling needs its own branch.
+                        var implementation = containingType.FindImplementationForInterfaceMember(member);
+                        if (implementation is not null
+                            && SymbolEqualityComparer.Default.Equals(
+                                implementation.OriginalDefinition, method.OriginalDefinition))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static ISymbol? SymbolOf(IOperation? operation) => operation switch

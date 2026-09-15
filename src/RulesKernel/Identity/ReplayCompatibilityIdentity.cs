@@ -175,7 +175,27 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// <inheritdoc/>
     public override bool Equals(object? obj) => Equals(obj as ReplayCompatibilityIdentity);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// A hash code for hashed-collection semantics, and nothing else. It is <b>never</b> a
+    /// persistent or replay fingerprint.
+    ///
+    /// <para>
+    /// <see cref="HashCode"/> is the correct tool for the job this member actually has --
+    /// bucketing an identity in a dictionary for the lifetime of one process -- and it is
+    /// deliberately the wrong tool for the job the surrounding type's name invites. .NET
+    /// randomises string hashing per process and <see cref="HashCode"/> carries no guarantee
+    /// across releases, so a value derived from here is reproducible all afternoon and
+    /// different tomorrow: the failure mode that passes every test written on the day and
+    /// breaks a stored replay months later.
+    /// </para>
+    ///
+    /// <para>
+    /// The comparison that means something is <see cref="Equals(ReplayCompatibilityIdentity?)"/>,
+    /// which compares every component. To *store* an identity, store the components. The type
+    /// whose whole purpose is replay identity should say which of its members is not one, so
+    /// it is said here rather than left to be inferred.
+    /// </para>
+    /// </summary>
     public override int GetHashCode()
     {
         var hash = new HashCode();

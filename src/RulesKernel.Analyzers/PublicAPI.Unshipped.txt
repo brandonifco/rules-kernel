@@ -4,5 +4,7 @@ override RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.Initialize(Microsof
 override RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientClock -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientConcurrency -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
+static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientCultureOrTimeZone -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientEntropy -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.AmbientEnvironment -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
+static readonly RulesKernel.Analyzers.AmbientNonDeterminismAnalyzer.ReplayUnstableHashing -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
