@@ -16,6 +16,17 @@ namespace RulesKernel.Resolution;
 /// </para>
 ///
 /// <para>
+/// <b>What this type enforces, and what it does not.</b> It cannot make an engine
+/// non-guessing: whether an operation returns this union or a bare value is the engine's
+/// claim, and a bare value for an unimplemented rule is invisible here. What it enforces
+/// begins once an operation has declared itself potentially non-total by returning it:
+/// no member yields the value without the caller naming the unresolved case. A handler that
+/// names it and returns a default anyway is still possible; the difference is that the
+/// guess is now written at a call site rather than implied by a return type
+/// (docs/decisions/0018).
+/// </para>
+///
+/// <para>
 /// The hierarchy is closed -- the private constructor means <see cref="Resolved"/> and
 /// <see cref="Unresolved"/> are the only cases that can ever exist, so
 /// <see cref="Match{TResult}"/> and a <c>switch</c> over it are exhaustive by
@@ -82,9 +93,10 @@ public abstract record Resolution<T>
     }
 
     /// <summary>
-    /// Exhaustively handles both cases. Forcing a caller to supply both is the point: it is
-    /// what stops an unresolved outcome from being silently dropped at the call site, which
-    /// would reintroduce the guess this type exists to prevent.
+    /// Exhaustively handles both cases. Forcing a caller to supply both is the point: an
+    /// unresolved outcome cannot be dropped without a handler that says so. It can still be
+    /// dropped deliberately -- <c>_ =&gt; 0</c> -- and nothing here prevents that; it only
+    /// makes the choice visible where it is made (docs/decisions/0018).
     /// </summary>
     /// <exception cref="ArgumentNullException">Either delegate is null.</exception>
     public TResult Match<TResult>(

@@ -21,6 +21,16 @@ updates:
         patterns:
           - "*"
 
+  # tools/requirements.txt: PyYAML, hash-pinned, for the repository checks.
+  - package-ecosystem: "pip"
+    directory: "/tools"
+    schedule:
+      interval: "monthly"
+    groups:
+      pip-dependencies:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

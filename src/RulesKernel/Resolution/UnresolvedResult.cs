@@ -12,7 +12,9 @@ namespace RulesKernel.Resolution;
 /// This is the second half of the determinism contract. The first half -- same inputs,
 /// same outputs -- is worthless if the engine reaches an unimplemented rule and invents an
 /// answer: it would then be reproducibly wrong. An engine honest about what it does not
-/// cover is useful; one that guesses at the rest is not.
+/// cover is useful; one that guesses at the rest is not. The honesty is the engine's to
+/// supply: this type is how a gap is reported, not a detector of gaps that were not
+/// (docs/decisions/0018).
 /// </para>
 ///
 /// <para>
