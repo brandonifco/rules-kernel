@@ -1,7 +1,10 @@
-# CLAUDE.md
+# Operating contract
 
 Operating contract for this repository. Read [README.md](README.md) for what the kernel is
 and [docs/architecture.md](docs/architecture.md) for how it is put together.
+
+`AGENTS.md` is a symbolic link to this file. It was a copy, and the copy lost the held-tag
+rule from the release cycle below within two days of it being written.
 
 ## What this repository is
 
@@ -69,7 +72,7 @@ Run the gate. There is one:
 ## The release cycle
 
 `main` is never a release version. It carries the **next** version with a prerelease
-suffix — `VersionPrefix 0.3.0` + `VersionSuffix dev`, resolving to `0.3.0-dev` — so an
+suffix — `VersionPrefix X.Y.Z` + `VersionSuffix dev`, resolving to `X.Y.Z-dev` — so an
 ordinary `dotnet pack` on a development tree produces something nuget.org has never served
 and never will. The alternative was tried: `main` sat at `0.2.0` for the whole life of the
 0.2.0 release, and a local pack of that tree shadowed the published package for hours
@@ -95,7 +98,7 @@ has been published — the exact state this cycle exists to make unreachable.
 
 `publish.yml` enforces what a reviewer cannot: it asks MSBuild for the **resolved**
 `PackageVersion` of every packable project and requires exact equality with the tag. A
-prefix comparison is not enough — a tree resolving to `0.3.0-dev` matches the prefix `0.3.0`
+prefix comparison is not enough — a tree resolving to `X.Y.Z-dev` matches the prefix `X.Y.Z`
 and would publish a package whose version disagrees with its own tag.
 
 ## Packing locally
@@ -106,7 +109,7 @@ later be published, and every restore on the machine then serves the local bytes
 released version, silently. It has already happened once.
 
 The development suffix above removes most of that hazard; this removes the rest. Two packs
-of `0.3.0-dev` are two different builds under one version — the same failure in miniature —
+of `X.Y.Z-dev` are two different builds under one version — the same failure in miniature —
 and `pack-local.sh` timestamps each one so they cannot shadow each other either.
 
 ## Adding a project
