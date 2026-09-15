@@ -81,9 +81,11 @@ dotnet_diagnostic.RK0007.severity = suggestion   # unordered materialized into o
 
 Test projects are worth a separate decision rather than a global one. Several of the
 findings above were `Guid.NewGuid` for a temporary filename and a `Task.Run` in a test — true
-statements about code whose determinism nobody is claiming. The analyzer is loaded by the
-compiler and cannot know which projects are tests, so that judgement is yours:
+statements about code whose determinism nobody is claiming. The analyzer does not guess which
+code that is. You declare it by path, the way `.editorconfig` scopes everything else
+([decision 0020](docs/decisions/0020-the-analyzers-scope-is-a-path.md)):
 
+<!-- sample: test-editorconfig -->
 ```ini
 # In a second .editorconfig beside your test projects: a test may construct
 # exactly what the kernel may not.
