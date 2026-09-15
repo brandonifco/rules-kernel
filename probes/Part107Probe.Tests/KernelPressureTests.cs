@@ -18,7 +18,7 @@ public sealed class KernelPressureTests
     // ------------------------------------------------ finding 1: two engines, one corpus
 
     [Fact]
-    public void The_same_bytes_pinned_by_two_engines_compare_equal_only_if_they_spell_the_derivation_alike()
+    public void The_same_bytes_pinned_by_two_engines_compare_equal_when_both_use_the_one_canonical_form()
     {
         // What faa-part-107's generated MapEntries.Baseline constructs, value for value.
         var faaPart107 = new SourceBaselineId(
@@ -26,20 +26,26 @@ public sealed class KernelPressureTests
             "ecfr-versioner-xml", new DateOnly(2026, 1, 1));
 
         Assert.Equal(faaPart107, Corpus.Regulation);
+    }
 
-        // Identical bytes and an identical method, spelled differently.
-        var respelled = new SourceBaselineId(Corpus.RegulationId, Corpus.RegulationHash, "eCFR-versioner-XML", Corpus.RegulationAsOf);
-        Assert.NotEqual(faaPart107, respelled);
+    [Theory]
+    [InlineData("eCFR-versioner-XML")]
+    [InlineData("ecfr-versioner-xml ")]
+    public void A_respelling_of_the_same_derivation_is_rejected_rather_than_compared_unequal(string respelled)
+    {
+        // Before decision 0019 both were accepted, and each compared unequal to faa-part-107's
+        // baseline over identical bytes.
+        Assert.Throws<ArgumentException>(() =>
+            new SourceBaselineId(Corpus.RegulationId, Corpus.RegulationHash, respelled, Corpus.RegulationAsOf));
     }
 
     [Fact]
-    public void A_derivation_with_a_trailing_space_is_accepted_and_compares_unequal()
+    public void Different_words_for_the_same_derivation_still_compare_unequal()
     {
-        // SourceId rejects surrounding whitespace for exactly this reason (SourceLocator's
-        // ThrowIfNotACanonicalSourceId); HashDerivation, compared the same way, does not.
-        var padded = new SourceBaselineId(Corpus.RegulationId, Corpus.RegulationHash, Corpus.RegulationDerivation + " ", Corpus.RegulationAsOf);
+        // The form is the kernel's; the vocabulary is the adapter's. Still open by design.
+        var reworded = new SourceBaselineId(Corpus.RegulationId, Corpus.RegulationHash, "ecfr-xml", Corpus.RegulationAsOf);
 
-        Assert.NotEqual(Corpus.Regulation, padded);
+        Assert.NotEqual(Corpus.Regulation, reworded);
     }
 
     // --------------------------------------------- finding 2: one corpus, two moments

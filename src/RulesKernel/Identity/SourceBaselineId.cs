@@ -61,6 +61,16 @@ public readonly record struct SourceBaselineId
     /// The kernel does not interpret this string, exactly as it does not interpret a
     /// citation: only the adapter that produced the hash can define what it covers.
     /// </para>
+    ///
+    /// <para>
+    /// It does fix the string's <em>form</em>: one or more runs of lowercase ASCII letters and
+    /// digits, joined by single hyphens or dots -- <c>ecfr-versioner-xml</c>,
+    /// <c>srd-5.2.1-pdftotext-24.02.0-page-marked</c>. The field is compared ordinally, so
+    /// <c>eCFR-versioner-XML</c> or a trailing space would make two engines pinning the same
+    /// bytes by the same method compare unequal. A Part 107 probe built against the same corpus
+    /// as a real engine found exactly that, and the vocabulary itself is still the adapter's
+    /// (docs/decisions/0019).
+    /// </para>
     /// </summary>
     public string HashDerivation { get; }
 
@@ -72,8 +82,10 @@ public readonly record struct SourceBaselineId
 
     /// <exception cref="ArgumentException">
     /// <paramref name="sourceId"/>, <paramref name="contentHash"/> or
-    /// <paramref name="hashDerivation"/> is null, empty, or whitespace, or
-    /// <paramref name="contentHash"/> is not 64 hexadecimal characters.
+    /// <paramref name="hashDerivation"/> is null, empty, or whitespace,
+    /// <paramref name="contentHash"/> is not 64 hexadecimal characters, or
+    /// <paramref name="hashDerivation"/> is not lowercase ASCII letters and digits joined by
+    /// single hyphens or dots.
     /// </exception>
     public SourceBaselineId(
         string sourceId, string contentHash, string hashDerivation, DateOnly? asOf = null)
@@ -89,6 +101,16 @@ public readonly record struct SourceBaselineId
                 "contentHash must be 64 hexadecimal characters (a SHA-256 digest); got "
                 + $"'{contentHash}'.",
                 nameof(contentHash));
+        }
+
+        if (!IsCanonicalDerivation(hashDerivation))
+        {
+            throw new ArgumentException(
+                "hashDerivation must be lowercase ASCII letters and digits joined by single "
+                + $"hyphens or dots, such as 'ecfr-versioner-xml'; got '{hashDerivation}'. It is "
+                + "compared ordinally, so any other spelling of the same derivation would compare "
+                + "unequal (docs/decisions/0019).",
+                nameof(hashDerivation));
         }
 
         SourceId = sourceId;
@@ -114,6 +136,31 @@ public readonly record struct SourceBaselineId
         }
 
         return true;
+    }
+
+    // Runs of [a-z0-9] joined by single '-' or '.'; no leading, trailing or doubled separator.
+    // Written out rather than as a Regex so the floor stays allocation-free and obvious.
+    private static bool IsCanonicalDerivation(string value)
+    {
+        bool previousWasSeparator = true;
+        foreach (char c in value)
+        {
+            bool alphanumeric = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+            if (alphanumeric)
+            {
+                previousWasSeparator = false;
+            }
+            else if ((c == '-' || c == '.') && !previousWasSeparator)
+            {
+                previousWasSeparator = true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return !previousWasSeparator;
     }
 
     /// <summary>False for <c>default(SourceBaselineId)</c>, which bypasses the constructor.</summary>

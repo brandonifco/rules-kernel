@@ -12,6 +12,16 @@ namespace RulesKernel.Identity;
 /// explicitly comparable.
 ///
 /// <para>
+/// <b>Necessary, not sufficient.</b> The name promises more than the type holds. Equal
+/// identities mean two runs used the same declared ruleset revision, replay schema, pinned
+/// corpora and generator. They do not mean the runs had the same initial state or decisions,
+/// which the type never sees. They also do not mean the engine made the same assumptions
+/// about its corpora, such as the dates a snapshot is trusted to cover; those belong to
+/// <see cref="Ruleset"/>, and only an engine that bumps it honours that. The name is kept
+/// until the pre-1.0 surface review rather than changed twice (docs/decisions/0019).
+/// </para>
+///
+/// <para>
 /// Two identities are equal only when every component matches. Each component changes for
 /// a different, independent reason, so a mismatch in any single one is a genuine
 /// incompatibility -- not something to average away.
@@ -23,6 +33,16 @@ namespace RulesKernel.Identity;
 /// its implementing regulations. Order is significant, and equality is sequential: the
 /// same baselines listed in a different order are a different identity. That is the
 /// stricter and safer default for a compatibility check (docs/decisions/0003).
+/// </para>
+///
+/// <para>
+/// Order is compared, and it carries <b>no precedence</b>. The kernel reads nothing from a
+/// baseline's position. Which corpus governs which question is a rule, often a
+/// question-dependent one, and it lives in the engine's code under its
+/// <see cref="Ruleset"/> revision. Equality stays sequential only because the kernel cannot
+/// see whether an engine reads the order, and wrongly reporting "incompatible" costs less than
+/// wrongly reporting "compatible". An engine should declare its baselines in one stable order
+/// and treat reordering them as a compatibility change (docs/decisions/0019).
 /// </para>
 ///
 /// <para>
