@@ -6,8 +6,8 @@ Accepted — 2026-09-14.
 
 ## Context
 
-The README lists nine checks under the heading "Invariants that are enforced, not merely
-documented". Three of them — `determinism`, `core-boundary` and `ordering` — are pattern
+The README lists this repository's checks under the heading "Invariants that are
+enforced, not merely documented". Three of them — `determinism`, `core-boundary` and `ordering` — are pattern
 matches over C# source text. They have no notion of what a symbol binds to.
 
 An external review of 0.1.0 demonstrated a long list of ways past them. The cheap,
@@ -51,14 +51,14 @@ compiled symbol graph.
 
 ## Consequences
 
-The nine checks keep exactly the value they had. A blacklist catches the ways a rule gets
+The checks keep exactly the value they had. A blacklist catches the ways a rule gets
 broken by accident and the ways it gets broken by someone who does not know the rule, on
 every commit, in under a second. That is most of the real traffic. It is not a proof of
 absence, and the README no longer lets a reader infer that it is.
 
 The other nets are unchanged and are not a substitute: `ArchitectureTests` in
 `tests/RulesKernel.Tests` and `tests/RulesKernel.Randomness.Tests` reflect over compiled
-assemblies, `tools/tests/` holds 105 tests showing each check fails when it should, and
+assemblies, `tools/tests/` holds 113 tests showing each check fails when it should, and
 CLAUDE.md's first governing principle is explicit that ruleset-agnosticism is a review
 obligation that nothing checks.
 

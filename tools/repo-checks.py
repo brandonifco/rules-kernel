@@ -22,6 +22,8 @@ Checks:
                       construction
   doc-references      every referenced repository path actually exists
   action-pins         every GitHub Action is pinned to a 40-hex commit SHA
+  target-frameworks   every packaged project still targets what ADR 0008 committed to,
+                      and its lock file covers the same set
 
 A check that examined nothing reports `skip`, and a skip fails the run. Every check in
 this file has scope in this repository -- there is no project, document or workflow it
@@ -102,6 +104,28 @@ ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
     # A probe: proves the kernel is usable by something that is not a game. Its
     # reference set is deliberately just the kernel -- see probes/README.md.
     "RegulatoryProbe.Tests": {"RulesKernel"},
+}
+
+# ------------------------------------------------- the frameworks each package commits to
+#
+# docs/decisions/0008 makes net8.0 a commitment, not a convenience: SRD_Combat pins SDK
+# 8.0.129 with rollForward disabled, and a net10.0-only package locked it out of the kernel
+# entirely. Dropping a target framework is a breaking change for every consumer pinned to
+# it, so it must be a decision that supersedes 0008 rather than an edit.
+#
+# `dotnet restore --locked-mode` already fails when a lock file and its project disagree,
+# which is how a dependency bump that regenerates the lock files gets caught. It cannot
+# catch the case this exists for: dropping a framework from BOTH, where the two agree and
+# the commitment is simply gone.
+#
+# RulesKernel.Analyzers is netstandard2.0 and is not part of the 0008 commitment. An
+# analyzer is loaded by the consumer's compiler, which loads netstandard2.0; see
+# docs/decisions/0011.
+EXPECTED_TARGET_FRAMEWORKS: dict[str, set[str]] = {
+    "RulesKernel": {"net8.0", "net10.0"},
+    "RulesKernel.Randomness": {"net8.0", "net10.0"},
+    "RulesKernel.Testing": {"net8.0", "net10.0"},
+    "RulesKernel.Analyzers": {"netstandard2.0"},
 }
 
 PROJECT_DIRS: dict[str, str] = {
@@ -1142,6 +1166,126 @@ def check_action_pins(root: Path) -> CheckResult:
     return result
 
 
+
+def declared_target_frameworks(csproj: Path, root: Path) -> list[str]:
+    """The frameworks a csproj actually builds for, honouring an emptied default.
+
+    A project clears the repo-wide `<TargetFramework>` with an empty element and declares
+    `<TargetFrameworks>` instead, so the singular form is only meaningful when it has a
+    value. A project that declares neither inherits the Directory.Build.props default.
+    """
+    text = csproj.read_text(encoding="utf-8", errors="replace")
+
+    plural = re.search(r"<TargetFrameworks>([^<]*)</TargetFrameworks>", text)
+    if plural:
+        frameworks = [part.strip() for part in plural.group(1).split(";") if part.strip()]
+        if frameworks:
+            return frameworks
+
+    singular = re.search(r"<TargetFramework>([^<]*)</TargetFramework>", text)
+    if singular and singular.group(1).strip():
+        return [singular.group(1).strip()]
+
+    props = root / "Directory.Build.props"
+    if props.is_file():
+        inherited = re.search(
+            r"<TargetFramework>([^<]*)</TargetFramework>",
+            props.read_text(encoding="utf-8", errors="replace"))
+        if inherited and inherited.group(1).strip():
+            return [inherited.group(1).strip()]
+
+    return []
+
+
+# A lock file does not spell frameworks the way a csproj does. NuGet writes the short TFM
+# for .NETCoreApp ("net8.0") but the long form for others (".NETStandard,Version=v2.0"), so
+# comparing the two sets verbatim reports a difference that does not exist.
+LOCK_FRAMEWORK_FORMS = {
+    ".NETStandard": "netstandard",
+    ".NETCoreApp": "net",
+    ".NETFramework": "net",
+}
+
+
+def normalize_framework(value: str) -> str:
+    """One spelling for a target framework, whichever form it arrived in."""
+    match = re.fullmatch(r"(\.NET[A-Za-z]+),Version=v([0-9.]+)", value.strip())
+    if not match:
+        return value.strip()
+
+    prefix = LOCK_FRAMEWORK_FORMS.get(match.group(1))
+    if prefix is None:
+        return value.strip()
+
+    version = match.group(2)
+    # .NETFramework is the one family whose short form drops the dots: v4.8 is net48.
+    if match.group(1) == ".NETFramework":
+        version = version.replace(".", "")
+    return prefix + version
+
+
+def check_target_frameworks(root: Path) -> CheckResult:
+    """Every packaged project still targets what this repository committed to.
+
+    Two things are asserted per package, because either alone is satisfiable while the
+    commitment is broken: the csproj declares exactly the expected frameworks, and its
+    committed lock file covers exactly the same set. A lock file that has quietly lost a
+    framework restores clean the moment the csproj loses it too.
+
+    An undeclared packaged project fails rather than passing unchecked, the same forcing
+    function ALLOWED_PROJECT_REFS applies to layering: adding a package must be a decision
+    about what it targets.
+    """
+    result = CheckResult()
+    for name, csproj in sorted(packaged_projects(root).items()):
+        rel = csproj.relative_to(root)
+        result.examined += 1
+
+        expected = EXPECTED_TARGET_FRAMEWORKS.get(name)
+        if expected is None:
+            result.failures.append(Failure(
+                f"{rel}: packaged project '{name}' is not declared in "
+                "EXPECTED_TARGET_FRAMEWORKS; what a package targets is a commitment to its "
+                "consumers, not a default"
+            ))
+            continue
+
+        declared = declared_target_frameworks(csproj, root)
+        if set(declared) != expected:
+            result.failures.append(Failure(
+                f"{rel}: targets {sorted(declared) or ['nothing']}, expected "
+                f"{sorted(expected)}; dropping one breaks every consumer pinned to it and "
+                "needs a decision superseding ADR 0008"
+            ))
+
+        lock = csproj.parent / "packages.lock.json"
+        if not lock.is_file():
+            result.failures.append(Failure(
+                f"{rel}: no packages.lock.json; RestorePackagesWithLockFile is on, so a "
+                "missing lock file means restore is free to resolve differently"
+            ))
+            continue
+
+        try:
+            locked = {
+                normalize_framework(key)
+                for key in json.loads(lock.read_text(encoding="utf-8")).get("dependencies", {})
+            }
+        except (ValueError, OSError) as error:
+            # check_parseable owns malformed JSON; this only needs to not crash before it
+            # reports.
+            result.failures.append(Failure(f"{lock.relative_to(root)}: unreadable ({error})"))
+            continue
+
+        if locked != expected:
+            result.failures.append(Failure(
+                f"{lock.relative_to(root)}: locks {sorted(locked) or ['nothing']}, expected "
+                f"{sorted(expected)}; regenerate with "
+                "`dotnet restore RulesKernel.slnx --force-evaluate`"
+            ))
+    return result
+
+
 CHECKS = {
     "text-hygiene": check_text_hygiene,
     "parseable": check_parseable,
@@ -1152,6 +1296,7 @@ CHECKS = {
     "ordering": check_ordering,
     "doc-references": check_doc_references,
     "action-pins": check_action_pins,
+    "target-frameworks": check_target_frameworks,
 }
 
 
