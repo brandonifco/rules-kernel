@@ -53,7 +53,7 @@
          suffix cannot be tagged as a release. See
          docs/decisions/0012-a-development-tree-is-not-a-release-candidate.md. -->
     <VersionPrefix>0.3.0</VersionPrefix>
-    <VersionSuffix>dev</VersionSuffix>
+    <VersionSuffix></VersionSuffix>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
