@@ -1,0 +1,33 @@
+{
+  "_comment": "Real engines the kernel is calibrated against before a release (docs/decisions/0021). 'kernel': built and tested against a pack of the kernel. 'analyzer': built with the packed analyzer attached, findings counted. Move a commit forward deliberately, in a reviewed change, and record the run in docs/calibration/.",
+  "consumers": [
+    {
+      "name": "faa-part-107",
+      "repository": "https://github.com/brandonifco/faa-part-107",
+      "commit": "3f11dde414060eb4fb7ff74940823ec6b0d5d758",
+      "modes": ["kernel", "analyzer"],
+      "why": "a regulation: dated corpus, no randomness, § citations"
+    },
+    {
+      "name": "hoyle-backgammon",
+      "repository": "https://github.com/brandonifco/hoyle-backgammon",
+      "commit": "5ef209790d6e72ecb8c2b82828f7c6ddf9aba190",
+      "modes": ["kernel", "analyzer"],
+      "why": "a board game: consumes RulesKernel.Randomness and draw counts"
+    },
+    {
+      "name": "srd-52-combat",
+      "repository": "https://github.com/brandonifco/srd-52-combat",
+      "commit": "894897f55031321beb1c5c669c52cfe5376a7bb8",
+      "modes": ["kernel", "analyzer"],
+      "why": "a tabletop RPG: extracted PDF corpus, randomness"
+    },
+    {
+      "name": "SRD_Combat",
+      "repository": "https://github.com/brandonifco/SRD_Combat",
+      "commit": "9b91ffe523bba87b40ee921284192190b62ac449",
+      "modes": ["analyzer"],
+      "why": "the large hand-written engine docs/decisions/0015 first calibrated the analyzer against; net8.0 on SDK 8.0.x"
+    }
+  ]
+}
