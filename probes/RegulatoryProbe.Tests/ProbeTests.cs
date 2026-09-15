@@ -59,6 +59,14 @@ public sealed class ProbeTests
 
         Assert.Contains("RulesKernel", referenced);
         Assert.DoesNotContain("RulesKernel.Randomness", referenced);
+
+        // The compiler drops a reference the code never uses, so the line above cannot see a
+        // declared dependency nothing has called yet (issue #54). The build's dependency graph
+        // can: it lists every package and project this test run resolved.
+        string depsJson = System.IO.File.ReadAllText(System.IO.Path.Combine(
+            AppContext.BaseDirectory, typeof(DeferralLimitEngine).Assembly.GetName().Name + ".deps.json"));
+        Assert.DoesNotContain("\"RulesKernel.Randomness/", depsJson, StringComparison.Ordinal);
+        Assert.Contains("\"RulesKernel/", depsJson, StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------------ the temporal axis
