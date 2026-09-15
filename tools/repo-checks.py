@@ -24,6 +24,8 @@ Checks:
   action-pins         every GitHub Action is pinned to a 40-hex commit SHA
   target-frameworks   every packaged project still targets what ADR 0008 committed to,
                       and its lock file covers the same set
+  doc-samples         every C# block in living documentation is a compiled sample, verbatim
+  dev-version         living documentation names no development version but the current one
 
 A check that examined nothing reports `skip`, and a skip fails the run. Every check in
 this file has scope in this repository -- there is no project, document or workflow it
@@ -111,6 +113,8 @@ ALLOWED_PROJECT_REFS: dict[str, set[str]] = {
     # A probe: proves the kernel is usable by something that is not a game. Its
     # reference set is deliberately just the kernel -- see probes/README.md.
     "RegulatoryProbe.Tests": {"RulesKernel"},
+    # README's C# blocks, compiled. The kernel alone, because that is all README shows.
+    "RulesKernel.Documentation.Tests": {"RulesKernel"},
 }
 
 # ------------------------------------------------- the frameworks each package commits to
@@ -144,6 +148,7 @@ PROJECT_DIRS: dict[str, str] = {
     "RulesKernel.Randomness.Tests": "tests",
     "RulesKernel.Analyzers.Tests": "tests",
     "RegulatoryProbe.Tests": "probes",
+    "RulesKernel.Documentation.Tests": "tests",
 }
 
 SRC_PROJECTS = {name for name, where in PROJECT_DIRS.items() if where == "src"}
@@ -1294,6 +1299,174 @@ def check_target_frameworks(root: Path) -> CheckResult:
     return result
 
 
+# ------------------------------------------------------------------ documentation samples
+#
+# README.md shipped in 0.2.0 and 0.3.0 with SourceBaselineId examples that did not compile:
+# the constructor gained a required hashDerivation in 0.2.0 (docs/decisions/0007) and the
+# prose kept the old call. Nothing compiled the prose. Now a C# block in documentation is
+# preceded by `<!-- sample: NAME -->` and is a verbatim copy of the region
+# `// sample: NAME` ... `// end sample` in a compiled project, which the gate builds and runs.
+#
+# Decision records are exempt. They record what was decided at the time, including the
+# shape of an API that has since changed, and rewriting them to track the code would destroy
+# the record.
+SAMPLE_DOC_EXEMPT = ("docs/decisions/", "tools/tests/")
+SAMPLE_MARKER = re.compile(r"^<!--\s*sample:\s*([A-Za-z0-9_.-]+)\s*-->\s*$")
+CSHARP_FENCE = re.compile(r"^```\s*(?:csharp|cs|c#)\s*$", re.IGNORECASE)
+REGION_START = re.compile(r"^\s*//\s*sample:\s*([A-Za-z0-9_.-]+)\s*$")
+REGION_END = re.compile(r"^\s*//\s*end sample\s*$")
+
+
+def _dedent(lines: list[str]) -> list[str]:
+    lines = [line.rstrip() for line in lines]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    indents = [len(line) - len(line.lstrip(" ")) for line in lines if line]
+    cut = min(indents) if indents else 0
+    return [line[cut:] for line in lines]
+
+
+def _sample_regions(root: Path, result: CheckResult) -> dict[str, tuple[Path, list[str]]]:
+    project_dirs = [csproj.parent for csproj in all_csproj(root)]
+    regions: dict[str, tuple[Path, list[str]]] = {}
+    for path in repo_files(root):
+        if path.suffix != ".cs":
+            continue
+        rel = path.relative_to(root)
+        if any(rel.as_posix().startswith(e) for e in SAMPLE_DOC_EXEMPT):
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        index = 0
+        while index < len(lines):
+            start = REGION_START.match(lines[index])
+            if not start:
+                index += 1
+                continue
+            name = start.group(1)
+            end = next((j for j in range(index + 1, len(lines)) if REGION_END.match(lines[j])), None)
+            if end is None:
+                result.failures.append(Failure(f"{rel}:{index + 1}: sample '{name}' has no '// end sample'"))
+                break
+            if name in regions:
+                result.failures.append(Failure(
+                    f"{rel}:{index + 1}: sample '{name}' is also defined in {regions[name][0]}"))
+            elif not any(path.is_relative_to(d) for d in project_dirs):
+                # A region in a file no project compiles proves nothing about compiling.
+                result.failures.append(Failure(
+                    f"{rel}:{index + 1}: sample '{name}' is not inside any project, so nothing compiles it"))
+            else:
+                regions[name] = (rel, _dedent(lines[index + 1:end]))
+            index = end + 1
+    return regions
+
+
+def check_doc_samples(root: Path) -> CheckResult:
+    """Every C# block in living documentation is a compiled sample, character for character.
+
+    What it does NOT prove: that the sample's test asserts what the prose around it claims.
+    It proves the code shown is code that compiles and runs; the assertions beside each
+    region are the reviewer's to keep honest.
+    """
+    result = CheckResult()
+    regions = _sample_regions(root, result)
+    used: set[str] = set()
+
+    for path in repo_files(root):
+        if path.suffix.lower() != ".md":
+            continue
+        rel = path.relative_to(root)
+        if any(rel.as_posix().startswith(e) for e in SAMPLE_DOC_EXEMPT):
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        index = 0
+        while index < len(lines):
+            if not CSHARP_FENCE.match(lines[index]):
+                index += 1
+                continue
+            result.examined += 1
+            end = next((j for j in range(index + 1, len(lines)) if lines[j].startswith("```")), len(lines))
+            body = _dedent(lines[index + 1:end])
+            marker = next((lines[j] for j in range(index - 1, -1, -1) if lines[j].strip()), "")
+            named = SAMPLE_MARKER.match(marker)
+            if not named:
+                result.failures.append(Failure(
+                    f"{rel}:{index + 1}: a C# block with no '<!-- sample: NAME -->' above it; "
+                    "nothing compiles it"))
+            elif named.group(1) not in regions:
+                result.failures.append(Failure(
+                    f"{rel}:{index + 1}: sample '{named.group(1)}' has no '// sample: "
+                    f"{named.group(1)}' region in any compiled project"))
+            else:
+                name = named.group(1)
+                used.add(name)
+                source, expected = regions[name]
+                if body != expected:
+                    line = next(
+                        (k for k in range(max(len(body), len(expected)))
+                         if k >= len(body) or k >= len(expected) or body[k] != expected[k]),
+                        0)
+                    shown = body[line] if line < len(body) else "(block ends)"
+                    compiled = expected[line] if line < len(expected) else "(region ends)"
+                    result.failures.append(Failure(
+                        f"{rel}:{index + 2 + line}: sample '{name}' differs from {source}: "
+                        f"documented {shown!r}, compiled {compiled!r}"))
+            index = end + 1
+
+    for name, (source, _) in sorted(regions.items()):
+        if name not in used:
+            result.failures.append(Failure(
+                f"{source}: sample '{name}' is shown in no document; delete it or show it"))
+    return result
+
+
+# ------------------------------------------------------------------ development version
+#
+# A comment in Directory.Build.props said `produces 0.3.0-dev` for the whole 0.4.0 cycle.
+# A development version named in living prose goes stale at every version bump, silently,
+# and a reader believes it. Prose that needs one names the current one, or says `-dev` in
+# general. Decision records are exempt for the reason doc-samples gives.
+DEV_VERSION = re.compile(r"(?<![\w.])(\d+\.\d+\.\d+)-dev\b")
+DEV_VERSION_EXEMPT = ("docs/decisions/", "tools/tests/", "tools/repo-checks.py")
+
+
+def current_version(root: Path) -> str | None:
+    props = root / "Directory.Build.props"
+    if not props.is_file():
+        return None
+    text = props.read_text(encoding="utf-8", errors="replace")
+    prefix = re.search(r"<VersionPrefix>\s*([^<\s]+)\s*</VersionPrefix>", text)
+    suffix = re.search(r"<VersionSuffix>\s*([^<\s]*)\s*</VersionSuffix>", text)
+    if not prefix:
+        return None
+    return prefix.group(1) + (f"-{suffix.group(1)}" if suffix and suffix.group(1) else "")
+
+
+def check_dev_version(root: Path) -> CheckResult:
+    """Living documentation names no development version other than the tree's own."""
+    result = CheckResult()
+    version = current_version(root)
+    if version is None:
+        result.failures.append(Failure("Directory.Build.props declares no VersionPrefix"))
+        return result
+    for path in repo_files(root):
+        raw = path.read_bytes()
+        if not is_probably_text(path, raw):
+            continue
+        rel = path.relative_to(root)
+        if any(rel.as_posix().startswith(e) for e in DEV_VERSION_EXEMPT):
+            continue
+        result.examined += 1
+        text = raw.decode("utf-8", errors="replace")
+        for match in DEV_VERSION.finditer(text):
+            if match.group(0) != version:
+                line = text.count("\n", 0, match.start()) + 1
+                result.failures.append(Failure(
+                    f"{rel}:{line}: names '{match.group(0)}', but this tree is {version}"))
+    return result
+
+
 CHECKS = {
     "text-hygiene": check_text_hygiene,
     "parseable": check_parseable,
@@ -1305,6 +1478,8 @@ CHECKS = {
     "doc-references": check_doc_references,
     "action-pins": check_action_pins,
     "target-frameworks": check_target_frameworks,
+    "doc-samples": check_doc_samples,
+    "dev-version": check_dev_version,
 }
 
 

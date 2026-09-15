@@ -80,6 +80,34 @@ jobs:
 """
 
 
+DIRECTORY_BUILD_PROPS = """<Project>
+  <PropertyGroup>
+    <VersionPrefix>0.4.0</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
+  </PropertyGroup>
+</Project>
+"""
+
+README_SAMPLE = """<!-- sample: locator -->
+```csharp
+var locator = new SourceLocator("core", "rule 4.2.1");
+```
+"""
+
+SAMPLES_CS = """namespace RulesKernel.Documentation.Tests;
+
+public sealed class Samples
+{
+    public void Locator()
+    {
+        // sample: locator
+        var locator = new SourceLocator("core", "rule 4.2.1");
+        // end sample
+    }
+}
+"""
+
+
 class Fixture:
     """A synthetic repository that satisfies every check, for tests to then break.
 
@@ -96,10 +124,10 @@ class Fixture:
         else:
             root.mkdir(parents=True, exist_ok=True)
             self.root = root
-        self.write("README.md", "# Fixture\n\nSee [CLAUDE.md](CLAUDE.md).\n")
+        self.write("README.md", "# Fixture\n\nSee [CLAUDE.md](CLAUDE.md).\n\n" + README_SAMPLE)
         self.write("CLAUDE.md", "# Fixture contract\n")
         self.write("global.json", '{\n  "sdk": {\n    "version": "10.0.112"\n  }\n}\n')
-        self.write("Directory.Build.props", "<Project>\n  <PropertyGroup />\n</Project>\n")
+        self.write("Directory.Build.props", DIRECTORY_BUILD_PROPS)
         self.write(".github/workflows/build-and-test.yml", WORKFLOW)
         self.write("scripts/validate.sh", "#!/usr/bin/env bash\nexit 0\n")
         for number, slug in (
@@ -135,6 +163,9 @@ class Fixture:
                      project_refs=["../../src/RulesKernel.Analyzers/RulesKernel.Analyzers.csproj"])
         self.project("probes/RegulatoryProbe.Tests", "RegulatoryProbe.Tests", packable=False,
                      project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
+        self.project("tests/RulesKernel.Documentation.Tests", "RulesKernel.Documentation.Tests",
+                     packable=False, project_refs=["../../src/RulesKernel/RulesKernel.csproj"])
+        self.write("tests/RulesKernel.Documentation.Tests/Samples.cs", SAMPLES_CS)
         self.write_solution()
 
     # -- construction helpers
@@ -1114,6 +1145,78 @@ class RepoFilesTests(CheckTestCase):
 
 
 # ------------------------------------------------------------------------- exit code
+
+
+class DocSampleTests(CheckTestCase):
+    SAMPLES = "tests/RulesKernel.Documentation.Tests/Samples.cs"
+
+    def test_a_matching_sample_passes_and_was_examined(self) -> None:
+        self.assertClean(rc.check_doc_samples)
+        self.assertExamined(rc.check_doc_samples)
+
+    def test_a_block_that_drifted_from_the_compiled_sample_fails(self) -> None:
+        # The real defect: README called SourceBaselineId without the hashDerivation the
+        # compiled constructor requires.
+        self.fixture.write("README.md", README_SAMPLE.replace('"rule 4.2.1"', '"rule 4.2.2"'))
+        self.assertFailsWith(rc.check_doc_samples, "differs from")
+
+    def test_an_unmarked_csharp_block_fails(self) -> None:
+        self.fixture.write("docs/architecture.md", "# A\n\n```csharp\nvar x = 1;\n```\n")
+        self.assertFailsWith(rc.check_doc_samples, "nothing compiles it")
+
+    def test_a_marker_naming_no_region_fails(self) -> None:
+        self.fixture.write("README.md", README_SAMPLE.replace("sample: locator", "sample: missing"))
+        self.assertFailsWith(rc.check_doc_samples, "no '// sample: missing' region")
+
+    def test_a_region_outside_any_project_fails(self) -> None:
+        (self.root / self.SAMPLES).unlink()
+        self.fixture.write("docs/Samples.cs", SAMPLES_CS)
+        self.assertFailsWith(rc.check_doc_samples, "not inside any project")
+
+    def test_a_region_no_document_shows_fails(self) -> None:
+        self.fixture.write(self.SAMPLES, SAMPLES_CS.replace("        // end sample\n",
+                                                              "        // end sample\n"
+                                                              "        // sample: orphan\n"
+                                                              "        var unused = 1;\n"
+                                                              "        // end sample\n"))
+        self.assertFailsWith(rc.check_doc_samples, "shown in no document")
+
+    def test_indentation_is_not_content(self) -> None:
+        self.fixture.write("README.md", README_SAMPLE.replace("var locator", "    var locator"))
+        self.assertClean(rc.check_doc_samples)
+
+    def test_a_decision_record_may_show_the_api_it_decided_against(self) -> None:
+        self.fixture.write("docs/decisions/0001-kernel-scope-and-layering.md",
+                           "# 0001\n\n```csharp\nnew SourceBaselineId(\"core\", hash);\n```\n")
+        self.assertClean(rc.check_doc_samples)
+
+
+class DevVersionTests(CheckTestCase):
+    def test_the_current_development_version_may_be_named(self) -> None:
+        self.fixture.write("CLAUDE.md", "# Contract\n\n`dotnet pack` produces 0.4.0-dev.\n")
+        self.assertClean(rc.check_dev_version)
+        self.assertExamined(rc.check_dev_version)
+
+    def test_a_stale_development_version_fails(self) -> None:
+        # The real defect: Directory.Build.props said 0.3.0-dev throughout 0.4.0.
+        self.fixture.write("Directory.Build.props",
+                           DIRECTORY_BUILD_PROPS.replace("</Project>", "<!-- produces 0.3.0-dev -->\n</Project>"))
+        self.assertFailsWith(rc.check_dev_version, "names '0.3.0-dev', but this tree is 0.4.0-dev")
+
+    def test_a_release_tree_names_no_development_version(self) -> None:
+        self.fixture.write("Directory.Build.props",
+                           DIRECTORY_BUILD_PROPS.replace("<VersionSuffix>dev</VersionSuffix>",
+                                                         "<VersionSuffix></VersionSuffix>"))
+        self.fixture.write("CLAUDE.md", "# Contract\n\nproduces 0.4.0-dev\n")
+        self.assertFailsWith(rc.check_dev_version, "this tree is 0.4.0")
+
+    def test_a_decision_record_keeps_its_history(self) -> None:
+        self.fixture.write("docs/decisions/0005-pinned-pseudorandom-algorithm.md", "# 0005\n\n0.3.0-dev\n")
+        self.assertClean(rc.check_dev_version)
+
+    def test_a_missing_version_prefix_fails(self) -> None:
+        self.fixture.write("Directory.Build.props", "<Project />\n")
+        self.assertFailsWith(rc.check_dev_version, "declares no VersionPrefix")
 
 
 class ExitCodeTests(unittest.TestCase):

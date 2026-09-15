@@ -35,7 +35,7 @@
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <!-- main is never a release version. VersionPrefix names the NEXT release; the
          suffix is what says this tree is not it, so an ordinary `dotnet pack` here
-         produces 0.3.0-dev, which nuget.org has never served and never will.
+         produces <VersionPrefix>-dev, which nuget.org has never served and never will.
 
          This exists because the alternative was tried. main carried VersionPrefix 0.2.0
          for the entire life of the 0.2.0 release, so every default pack on main produced
