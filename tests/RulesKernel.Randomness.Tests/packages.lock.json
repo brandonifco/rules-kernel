@@ -93,13 +93,13 @@
       "ruleskernel.randomness": {
         "type": "Project",
         "dependencies": {
-          "RulesKernel": "[1.0.0, )"
+          "RulesKernel": "[1.0.1-dev, )"
         }
       },
       "ruleskernel.testing": {
         "type": "Project",
         "dependencies": {
-          "RulesKernel.Randomness": "[1.0.0, )"
+          "RulesKernel.Randomness": "[1.0.1-dev, )"
         }
       }
     }
