@@ -47,7 +47,7 @@ Three concerns, and nothing else:
 **Identity** — what makes two runs comparable. `RulesetVersion` (the implemented revision),
 `ReplaySchemaVersion` (the shape of a recorded replay), `SourceBaselineId` (which corpus, at
 what content hash, as of what moment), `RandomAlgorithmId` (which generator, if any), and
-`ReplayCompatibilityIdentity`, which combines them and compares as a whole.
+`EngineIdentity`, which combines them and compares as a whole.
 
 **Provenance** — `SourceLocator`, naming the corpus and carrying a citation whose grammar
 belongs to that corpus's adapter. Page numbers, regulation designations, statute sections

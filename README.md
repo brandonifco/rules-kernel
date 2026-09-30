@@ -109,7 +109,7 @@ without drawing a value, and never references it ([decision 0002](docs/decisions
 
 <!-- sample: identity -->
 ```csharp
-var identity = new ReplayCompatibilityIdentity(
+var identity = new EngineIdentity(
     ruleset: new RulesetVersion("cfr-26-401k", 3),
     replaySchema: new ReplaySchemaVersion(1),
     sourceBaselines:

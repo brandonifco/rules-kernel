@@ -22,7 +22,7 @@ public sealed class ReadmeSamples
     public void Identity()
     {
         // sample: identity
-        var identity = new ReplayCompatibilityIdentity(
+        var identity = new EngineIdentity(
             ruleset: new RulesetVersion("cfr-26-401k", 3),
             replaySchema: new ReplaySchemaVersion(1),
             sourceBaselines:

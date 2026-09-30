@@ -45,7 +45,7 @@ consequences. The engine needs a start date to answer anything about an operatio
 unverified).
 
 Two things follow. First, an engine answering on both sides of an amendment needs two
-snapshots of one regulation, and `ReplayCompatibilityIdentity` rejects two baselines with one
+snapshots of one regulation, and `EngineIdentity` rejects two baselines with one
 `SourceId`. Second, the start date appears nowhere in the identity: two engines that assume
 different start dates have equal identities and give different answers for April 2021.
 

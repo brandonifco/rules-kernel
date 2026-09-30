@@ -11,7 +11,7 @@ namespace RulesKernel.Identity;
 /// <c>default(RulesetVersion)</c> bypasses the constructor and yields a
 /// <see langword="null"/> <see cref="Id"/> paired with a valid-looking <c>Version</c> of
 /// <c>0</c>. <see cref="IsValid"/> distinguishes a constructed value from that default;
-/// <see cref="ReplayCompatibilityIdentity"/> rejects the default rather than comparing it.
+/// <see cref="EngineIdentity"/> rejects the default rather than comparing it.
 /// </para>
 /// </summary>
 public readonly record struct RulesetVersion

@@ -10,7 +10,7 @@ namespace RulesKernel.Identity;
 /// <para>
 /// This type lives in the kernel rather than in <c>RulesKernel.Randomness</c> on purpose:
 /// it is part of replay <em>identity</em>, and an engine that draws no random values at
-/// all still has to be able to say so. <see cref="ReplayCompatibilityIdentity"/> carries
+/// all still has to be able to say so. <see cref="EngineIdentity"/> carries
 /// it as an optional component, absent meaning "this engine consumes no randomness"
 /// (docs/decisions/0002).
 /// </para>

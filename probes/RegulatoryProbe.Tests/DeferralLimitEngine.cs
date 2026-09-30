@@ -34,10 +34,10 @@ public sealed class DeferralLimitEngine
     private readonly IReadOnlyDictionary<int, int> _adjustments;
 
     /// <summary>The replay identity of this engine over the corpora it was built from.</summary>
-    public ReplayCompatibilityIdentity Identity { get; }
+    public EngineIdentity Identity { get; }
 
     public DeferralLimitEngine(
-        ReplayCompatibilityIdentity identity,
+        EngineIdentity identity,
         IReadOnlyDictionary<int, int> adjustmentsByYear)
     {
         ArgumentNullException.ThrowIfNull(identity);

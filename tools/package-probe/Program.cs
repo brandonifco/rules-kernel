@@ -140,7 +140,7 @@ internal static class Program
         return 0;
     }
 
-    private static ReplayCompatibilityIdentity BuildIdentity(
+    private static EngineIdentity BuildIdentity(
         IEnumerable<SourceBaselineId> baselines, int rulesetRevision, RandomAlgorithmId? algorithm) =>
         new(
             new RulesetVersion("smoke-consumer", rulesetRevision),
@@ -204,7 +204,7 @@ internal static class Program
                 new[] { default(SourceBaselineId) }, 3, null),
             "a default(SourceBaselineId) is rejected rather than compared");
         AssertThrows<ArgumentException>(
-            () => new ReplayCompatibilityIdentity(
+            () => new EngineIdentity(
                 default, new ReplaySchemaVersion(2), new[] { primary }),
             "a default(RulesetVersion) is rejected rather than compared");
         AssertThrows<ArgumentException>(
