@@ -11,9 +11,12 @@
 #       as errors, and run its tests. Pass/fail. For any change to a kernel type.
 #
 #   tools/calibration/run.sh analyzer [checkout...]
-#       Attach the packed RulesKernel.Analyzers to every project from outside (MSBuild's
-#       CustomAfterMicrosoftCommonTargets, as tools/analyzer-probe/check.sh does), build with
-#       RK diagnostics kept as warnings so the build does not stop at the first one
+#       Point the consumer's RulesKernel* pins at the pack as kernel mode does (a release with
+#       a breaking change must be calibrated against consumers migrated to it, and one
+#       consumer commit serves both modes), then attach the packed RulesKernel.Analyzers to
+#       every project from outside (MSBuild's CustomAfterMicrosoftCommonTargets, as
+#       tools/analyzer-probe/check.sh does), build with RK diagnostics kept as warnings so
+#       the build does not stop at the first one
 #       (docs/decisions/0015 lost 11 of 17 findings that way), and count unique findings per
 #       rule. A count, not a verdict: whether a finding is true is a reviewer's reading.
 #
@@ -167,11 +170,10 @@ PY
 
   log="$WORK/$name.log"
 
-  if [[ "$MODE" == kernel ]]; then
-    # Every RulesKernel package pin, wherever the consumer declares it, moves to this pack.
-    # Counted: a consumer whose pins were not found would be calibrated against whatever
-    # version it already had, and report ok.
-    pins="$(python3 - "$copy" "$VERSION" <<'PY'
+  # Both modes: every RulesKernel package pin, wherever the consumer declares it, moves to
+  # this pack. Counted: a consumer whose pins were not found would be calibrated against
+  # whatever version it already had, and report ok.
+  pins="$(python3 - "$copy" "$VERSION" <<'PY'
 import pathlib, re, sys
 root, version = pathlib.Path(sys.argv[1]), sys.argv[2]
 pattern = re.compile(r'(Include="RulesKernel(?:\.[A-Za-z]+)?"\s+Version=")[^"]*(")')
@@ -185,14 +187,19 @@ for path in list(root.rglob("*.props")) + list(root.rglob("*.csproj")):
 print(count)
 PY
 )"
-    if [[ "$pins" -eq 0 ]]; then
+  if [[ "$pins" -eq 0 ]]; then
+    if [[ "$MODE" == kernel ]]; then
       echo "| $name | $short | 0 | - | FAIL: no RulesKernel pin to redirect |"
-      status=1
-      continue
+    else
+      echo "| $name | $short | FAIL: no RulesKernel pin to redirect | - |"
     fi
-    printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <clear />\n    <add key="calibration" value="%s" />\n    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n  </packageSources>\n</configuration>\n' \
-        "$FEED" > "$copy/nuget.config"
+    status=1
+    continue
+  fi
+  printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <clear />\n    <add key="calibration" value="%s" />\n    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n  </packageSources>\n</configuration>\n' \
+      "$FEED" > "$copy/nuget.config"
 
+  if [[ "$MODE" == kernel ]]; then
     # From the copy's own directory: the dotnet host takes global.json from the working
     # directory, not from the project path (see tools/analyzer-probe/check.sh).
     if (cd "$copy" \
@@ -231,8 +238,10 @@ for csproj in sorted(root.rglob("*.csproj")):
 print(count)
 PY
 )"
-    if ! (cd "$copy" && dotnet build -p:UseSharedCompilation=false \
-          -p:CustomAfterMicrosoftCommonTargets="$WORK/analyzer.targets") >"$log" 2>&1; then
+    if ! (cd "$copy" \
+          && dotnet restore --force-evaluate -p:RestoreLockedMode=false \
+          && dotnet build --no-restore -p:UseSharedCompilation=false \
+             -p:CustomAfterMicrosoftCommonTargets="$WORK/analyzer.targets") >"$log" 2>&1; then
       echo "| $name | $short | build failed for a reason other than an RK finding | - |"
       grep -E 'error [A-Z]+[0-9]+' "$log" | sort -u | head -10 | sed 's/^/    /' >&2
       status=1
