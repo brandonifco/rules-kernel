@@ -95,4 +95,40 @@ public sealed class ResolutionTests
     {
         Assert.Throws<ArgumentNullException>(() => Resolution<int>.FromUnresolved(null!));
     }
+
+    /// <summary>
+    /// A record that is not sealed gets a protected copy constructor from the compiler, and a
+    /// derived record can chain to it. That made a third case, which Match reported as
+    /// unreachable. The copy constructor now refuses anything that is not Resolved or
+    /// Unresolved (docs/decisions/0023).
+    /// </summary>
+    [Fact]
+    public void A_third_case_can_be_declared_but_not_constructed()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => new Impostor(Resolution<int>.FromValue(1)));
+        Assert.Contains("docs/decisions/0023", exception.Message);
+    }
+
+    [Fact]
+    public void With_on_either_case_still_produces_an_equal_copy()
+    {
+        var resolved = Resolution<int>.FromValue(5);
+        var unresolved = Resolution<int>.FromUnresolved(Gap());
+
+        var resolvedCopy = resolved with { };
+        var unresolvedCopy = unresolved with { };
+
+        Assert.NotSame(resolved, resolvedCopy);
+        Assert.Equal(resolved, resolvedCopy);
+        Assert.NotSame(unresolved, unresolvedCopy);
+        Assert.Equal(unresolved, unresolvedCopy);
+    }
+
+    private sealed record Impostor : Resolution<int>
+    {
+        public Impostor(Resolution<int> original) : base(original)
+        {
+        }
+    }
 }

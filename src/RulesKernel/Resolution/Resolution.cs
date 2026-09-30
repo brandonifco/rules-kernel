@@ -35,10 +35,11 @@ namespace RulesKernel.Resolution;
 /// </para>
 ///
 /// <para>
-/// The hierarchy is closed -- the private constructor means <see cref="Resolved"/> and
-/// <see cref="Unresolved"/> are the only cases that can ever exist, so
-/// <see cref="Match{TResult}"/> and a <c>switch</c> over it are exhaustive by
-/// construction.
+/// The hierarchy is closed -- the private constructor and a guarded copy constructor mean
+/// <see cref="Resolved"/> and <see cref="Unresolved"/> are the only cases that can ever
+/// exist, so <see cref="Match{TResult}"/> and a <c>switch</c> over it are exhaustive by
+/// construction. A third case can be declared but not constructed
+/// (docs/decisions/0023).
 /// </para>
 /// </summary>
 /// <typeparam name="T">The resolved value's type.</typeparam>
@@ -46,6 +47,31 @@ public abstract record Resolution<T>
 {
     private Resolution()
     {
+    }
+
+    /// <summary>
+    /// Declared so the compiler does not generate an unguarded one: a record that is not
+    /// sealed gets a protected copy constructor, and a derived record could chain to it,
+    /// making a third case that <see cref="Match{TResult}"/> reports as unreachable. The
+    /// only legitimate callers are <see cref="Resolved"/> and <see cref="Unresolved"/>,
+    /// through <c>with</c>.
+    /// </summary>
+    /// <param name="original">The instance being copied.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="original"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The instance being constructed is neither <see cref="Resolved"/> nor
+    /// <see cref="Unresolved"/>.
+    /// </exception>
+    protected Resolution(Resolution<T> original)
+    {
+        ArgumentNullException.ThrowIfNull(original);
+
+        if (this is not (Resolved or Unresolved))
+        {
+            throw new InvalidOperationException(
+                "Resolution<T> is a closed hierarchy whose only cases are Resolved and Unresolved "
+                + "(docs/decisions/0023).");
+        }
     }
 
     /// <summary>True when this is a <see cref="Resolved"/> outcome.</summary>
