@@ -24,8 +24,17 @@ namespace RulesKernel.Provenance;
 public readonly record struct SourceLocator
 {
     /// <summary>
-    /// The corpus this citation points into, matching a
-    /// <see cref="Identity.SourceBaselineId.SourceId"/> in the engine's replay identity.
+    /// The corpus this citation points into.
+    ///
+    /// <para>
+    /// For a rule the engine applies, this names a corpus the engine pins -- a
+    /// <see cref="Identity.SourceBaselineId.SourceId"/> in its identity -- or a change to that
+    /// corpus changes its answers without changing its identity. An unresolved result may
+    /// name a corpus the engine does not pin: an <c>OutsideCurrentScope</c> result points at
+    /// exactly what the engine does not hold. The kernel checks neither; a locator does not
+    /// know which identity it belongs to. The check belongs where the map of citations is
+    /// known: the engine's own tests, or the tooling that produced it (docs/decisions/0022).
+    /// </para>
     /// </summary>
     public string SourceId { get; }
 

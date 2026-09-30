@@ -34,3 +34,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0019](0019-replay-identity-is-necessary-not-sufficient.md) | Replay identity is necessary, not sufficient |
 | [0020](0020-the-analyzers-scope-is-a-path.md) | The analyzer's scope is a path |
 | [0021](0021-external-calibration-is-a-release-gate.md) | External calibration is a release gate |
+| [0022](0022-the-pre-1.0-surface-review.md) | The pre-1.0 surface review |

@@ -138,8 +138,11 @@ var numberedRule = new SourceLocator("boardgame", "rule 4.2.1");
 ```
 
 The citation's grammar belongs to the corpus's adapter. The kernel checks that one was
-supplied and which corpus it points into; whether it is well-formed is the adapter's
-question, and whether it points at the right passage is the reviewer's.
+supplied and records which corpus it points into; whether it is well-formed is the adapter's
+question, and whether it points at the right passage is the reviewer's. Whether that corpus
+is one the engine pins is not checked here either: an unresolved result may rightly cite one
+it does not, and a resolved answer cites through the engine's own result type
+([decision 0022](docs/decisions/0022-the-pre-1.0-surface-review.md)).
 
 **Resolution** — how an engine declines to answer.
 

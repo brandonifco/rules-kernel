@@ -13,8 +13,9 @@ because two engines hitting it is stronger evidence than one.
 
 Counts: **8 findings.** Three are decided in
 [decision 0019](../../docs/decisions/0019-replay-identity-is-necessary-not-sufficient.md) (1,
-2 and 3): 1 changed the kernel, and 2 and 3 changed only what it claims. Two are accepted
-limitations for 0.4.0 (4, 5). The remaining three are evidence the kernel held up (6, 7, 8).
+2 and 3): 1 changed the kernel, and 2 and 3 changed only what it claims. Two were accepted
+limitations for 0.4.0 (4, 5) and are decided as intentional boundaries in
+[decision 0022](../../docs/decisions/0022-the-pre-1.0-surface-review.md). The remaining three are evidence the kernel held up (6, 7, 8).
 
 ---
 
@@ -91,6 +92,10 @@ Accepted for 0.4.0. `Resolution<T>` stays as small as it is
 Two engines converging on a shape is the evidence a future kernel type would need. It is not
 yet evidence for the shape itself: one engine carries one authority and the other a list.
 
+**Decided (0022):** an intentional boundary. Five engines now cite their answers, in three
+shapes: one authority per result, this probe's ordered list, and citations on map entries. The
+carrier is the engine's.
+
 Test: `A_resolved_outcome_carries_no_citation_and_an_unresolved_one_must`.
 
 ## 5. Answers cite corpora the engine does not pin, and the kernel cannot tell which are wrong to
@@ -111,8 +116,10 @@ answers without changing its identity. That is a provenance defect in this probe
 left in on purpose, because nothing in the kernel could have caught it: resolved answers
 carry no citations (finding 4), and locators are never checked against the identity.
 
-Accepted for 0.4.0 as a limitation, with this probe as its reproduction. A check that a
-resolved answer cites only pinned corpora needs finding 4 resolved first.
+Accepted for 0.4.0 as a limitation, with this probe as its reproduction. **Decided (0022):** an
+intentional boundary. The check belongs where the map of citations is known. rules-factory makes
+it for the engines it produces, and a hand-written engine such as this probe owes it to its own
+tests. The defect stays in as a reproduction of what the kernel does not catch.
 
 Test: `An_unresolved_result_may_cite_a_corpus_absent_from_the_engines_identity`.
 

@@ -27,6 +27,14 @@ namespace RulesKernel.Resolution;
 /// </para>
 ///
 /// <para>
+/// <b>A resolved value carries no citation here.</b> An unresolved result must cite where the
+/// rule lives; a resolved one cites through its own value. An engine that cites its answers
+/// puts <see cref="Provenance.SourceLocator"/>s in <typeparamref name="T"/>, in whatever shape
+/// its rules need -- one authority, an ordered list of passages applied, a map entry. Real
+/// engines use all three, which is why the shape is theirs (docs/decisions/0022).
+/// </para>
+///
+/// <para>
 /// The hierarchy is closed -- the private constructor means <see cref="Resolved"/> and
 /// <see cref="Unresolved"/> are the only cases that can ever exist, so
 /// <see cref="Match{TResult}"/> and a <c>switch</c> over it are exhaustive by
