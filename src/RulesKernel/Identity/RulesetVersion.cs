@@ -25,6 +25,14 @@ public readonly record struct RulesetVersion
     /// <summary>
     /// This ruleset's implementation revision. Bumping it is routine engineering, expected
     /// whenever a change could alter how a recorded decision resolves.
+    ///
+    /// <para>
+    /// That includes a change to what the engine assumes about its corpora rather than to
+    /// the corpora themselves -- the dates a snapshot is trusted to cover is the case that
+    /// found this. A baseline pins what a corpus said as of one moment; what the engine takes
+    /// that to mean is its own claim, and this revision is where the identity records it
+    /// (docs/decisions/0022).
+    /// </para>
     /// </summary>
     public int Version { get; }
 
