@@ -1,0 +1,2 @@
+*REMOVED*RulesKernel.AssemblyMarker
+*REMOVED*static RulesKernel.AssemblyMarker.Assembly.get -> System.Reflection.Assembly!
