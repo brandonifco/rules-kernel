@@ -1,9 +1,9 @@
 # What Part 107 found in the kernel
 
-Written while building this probe, against `RulesKernel` 0.4.0-dev. Each finding names the
-test in `KernelPressureTests.cs` or `RuleTests.cs` that pins the current behaviour. A kernel
-change that resolves a finding should fail that test, and the finding is then updated here
-rather than deleted.
+Written while building this probe, against the `RulesKernel` 0.4.0 development tree. Each
+finding names the test in `KernelPressureTests.cs` or `RuleTests.cs` that pins the current
+behaviour. A kernel change that resolves a finding should fail that test, and the finding is
+then updated here rather than deleted.
 
 The probe covers § 107.29 (night and civil twilight, including the waiver dates in (d)) and
 § 107.65 (knowledge recency), quoting 14 CFR Part 107 as of 2026-01-01. The same bytes are

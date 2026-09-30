@@ -163,6 +163,22 @@ What the type enforces begins after that decision: no path from a `Resolution<T>
 skips the unresolved case, though a handler can still discard it on purpose
 ([decision 0018](docs/decisions/0018-resolution-enforces-handling-not-honesty.md)).
 
+## Compatibility through 1.x
+
+From 1.0.0, a 1.x version bump of `RulesKernel`, `RulesKernel.Randomness` or
+`RulesKernel.Testing` does not remove or reshape public API, change what compares equal,
+change a single draw from `Pcg32` or how many `UniformInt` consumes, add a case to
+`Resolution<T>` or a reason to `UnresolvedReason`, or drop net8.0 or net10.0. A constructor
+keeps rejecting what it rejected. It can start rejecting a value only to close a hole, and
+only with a decision record behind it.
+
+`RulesKernel.Analyzers` promises less, on purpose. Its diagnostic IDs are permanent, but a
+1.x release may add a rule or widen one, so a bump can add warnings.
+
+`ToString` output, exception messages and `GetHashCode` values are not part of the contract.
+The full statement, and what enforces each part of it, is
+[decision 0025](docs/decisions/0025-what-1x-promises.md).
+
 ## Verify it
 
 ```bash
