@@ -1,19 +1,18 @@
 #nullable enable
-RulesKernel.AssemblyMarker
+RulesKernel.Identity.EngineIdentity
+RulesKernel.Identity.EngineIdentity.EngineIdentity(RulesKernel.Identity.RulesetVersion ruleset, RulesKernel.Identity.ReplaySchemaVersion replaySchema, System.Collections.Generic.IEnumerable<RulesKernel.Identity.SourceBaselineId>! sourceBaselines, RulesKernel.Identity.RandomAlgorithmId? randomAlgorithm = null) -> void
+RulesKernel.Identity.EngineIdentity.Equals(RulesKernel.Identity.EngineIdentity? other) -> bool
+RulesKernel.Identity.EngineIdentity.IsDeterministicWithoutRandomness.get -> bool
+RulesKernel.Identity.EngineIdentity.RandomAlgorithm.get -> RulesKernel.Identity.RandomAlgorithmId?
+RulesKernel.Identity.EngineIdentity.ReplaySchema.get -> RulesKernel.Identity.ReplaySchemaVersion
+RulesKernel.Identity.EngineIdentity.Ruleset.get -> RulesKernel.Identity.RulesetVersion
+RulesKernel.Identity.EngineIdentity.SourceBaselines.get -> System.Collections.Immutable.ImmutableArray<RulesKernel.Identity.SourceBaselineId>
 RulesKernel.Identity.RandomAlgorithmId
 RulesKernel.Identity.RandomAlgorithmId.Equals(RulesKernel.Identity.RandomAlgorithmId other) -> bool
 RulesKernel.Identity.RandomAlgorithmId.IsValid.get -> bool
 RulesKernel.Identity.RandomAlgorithmId.Name.get -> string!
 RulesKernel.Identity.RandomAlgorithmId.RandomAlgorithmId() -> void
 RulesKernel.Identity.RandomAlgorithmId.RandomAlgorithmId(string! name) -> void
-RulesKernel.Identity.ReplayCompatibilityIdentity
-RulesKernel.Identity.ReplayCompatibilityIdentity.Equals(RulesKernel.Identity.ReplayCompatibilityIdentity? other) -> bool
-RulesKernel.Identity.ReplayCompatibilityIdentity.IsDeterministicWithoutRandomness.get -> bool
-RulesKernel.Identity.ReplayCompatibilityIdentity.RandomAlgorithm.get -> RulesKernel.Identity.RandomAlgorithmId?
-RulesKernel.Identity.ReplayCompatibilityIdentity.ReplayCompatibilityIdentity(RulesKernel.Identity.RulesetVersion ruleset, RulesKernel.Identity.ReplaySchemaVersion replaySchema, System.Collections.Generic.IEnumerable<RulesKernel.Identity.SourceBaselineId>! sourceBaselines, RulesKernel.Identity.RandomAlgorithmId? randomAlgorithm = null) -> void
-RulesKernel.Identity.ReplayCompatibilityIdentity.ReplaySchema.get -> RulesKernel.Identity.ReplaySchemaVersion
-RulesKernel.Identity.ReplayCompatibilityIdentity.Ruleset.get -> RulesKernel.Identity.RulesetVersion
-RulesKernel.Identity.ReplayCompatibilityIdentity.SourceBaselines.get -> System.Collections.Immutable.ImmutableArray<RulesKernel.Identity.SourceBaselineId>
 RulesKernel.Identity.ReplaySchemaVersion
 RulesKernel.Identity.ReplaySchemaVersion.Equals(RulesKernel.Identity.ReplaySchemaVersion other) -> bool
 RulesKernel.Identity.ReplaySchemaVersion.ReplaySchemaVersion() -> void
@@ -68,10 +67,10 @@ RulesKernel.Resolution.UnresolvedResult.Locator.get -> RulesKernel.Provenance.So
 RulesKernel.Resolution.UnresolvedResult.Reason.get -> RulesKernel.Resolution.UnresolvedReason
 RulesKernel.Resolution.UnresolvedResult.UnresolvedResult(RulesKernel.Resolution.UnresolvedReason reason, string! attempted, RulesKernel.Provenance.SourceLocator locator) -> void
 abstract RulesKernel.Resolution.Resolution<T>.<Clone>$() -> RulesKernel.Resolution.Resolution<T>!
+override RulesKernel.Identity.EngineIdentity.Equals(object? obj) -> bool
+override RulesKernel.Identity.EngineIdentity.GetHashCode() -> int
 override RulesKernel.Identity.RandomAlgorithmId.GetHashCode() -> int
 override RulesKernel.Identity.RandomAlgorithmId.ToString() -> string!
-override RulesKernel.Identity.ReplayCompatibilityIdentity.Equals(object? obj) -> bool
-override RulesKernel.Identity.ReplayCompatibilityIdentity.GetHashCode() -> int
 override RulesKernel.Identity.ReplaySchemaVersion.GetHashCode() -> int
 override RulesKernel.Identity.RulesetVersion.GetHashCode() -> int
 override RulesKernel.Identity.SourceBaselineId.GetHashCode() -> int
@@ -94,11 +93,10 @@ override RulesKernel.Resolution.UnresolvedResult.GetHashCode() -> int
 override RulesKernel.Resolution.UnresolvedResult.ToString() -> string!
 override sealed RulesKernel.Resolution.Resolution<T>.Resolved.Equals(RulesKernel.Resolution.Resolution<T>? other) -> bool
 override sealed RulesKernel.Resolution.Resolution<T>.Unresolved.Equals(RulesKernel.Resolution.Resolution<T>? other) -> bool
-static RulesKernel.AssemblyMarker.Assembly.get -> System.Reflection.Assembly!
+static RulesKernel.Identity.EngineIdentity.operator !=(RulesKernel.Identity.EngineIdentity? left, RulesKernel.Identity.EngineIdentity? right) -> bool
+static RulesKernel.Identity.EngineIdentity.operator ==(RulesKernel.Identity.EngineIdentity? left, RulesKernel.Identity.EngineIdentity? right) -> bool
 static RulesKernel.Identity.RandomAlgorithmId.operator !=(RulesKernel.Identity.RandomAlgorithmId left, RulesKernel.Identity.RandomAlgorithmId right) -> bool
 static RulesKernel.Identity.RandomAlgorithmId.operator ==(RulesKernel.Identity.RandomAlgorithmId left, RulesKernel.Identity.RandomAlgorithmId right) -> bool
-static RulesKernel.Identity.ReplayCompatibilityIdentity.operator !=(RulesKernel.Identity.ReplayCompatibilityIdentity? left, RulesKernel.Identity.ReplayCompatibilityIdentity? right) -> bool
-static RulesKernel.Identity.ReplayCompatibilityIdentity.operator ==(RulesKernel.Identity.ReplayCompatibilityIdentity? left, RulesKernel.Identity.ReplayCompatibilityIdentity? right) -> bool
 static RulesKernel.Identity.ReplaySchemaVersion.operator !=(RulesKernel.Identity.ReplaySchemaVersion left, RulesKernel.Identity.ReplaySchemaVersion right) -> bool
 static RulesKernel.Identity.ReplaySchemaVersion.operator ==(RulesKernel.Identity.ReplaySchemaVersion left, RulesKernel.Identity.ReplaySchemaVersion right) -> bool
 static RulesKernel.Identity.RulesetVersion.operator !=(RulesKernel.Identity.RulesetVersion left, RulesKernel.Identity.RulesetVersion right) -> bool

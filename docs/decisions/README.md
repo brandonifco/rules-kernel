@@ -37,3 +37,4 @@ that does not exist, so a citation in a comment is a promise this repository kee
 | [0022](0022-the-pre-1.0-surface-review.md) | The pre-1.0 surface review |
 | [0023](0023-resolution-is-closed-at-construction.md) | Resolution is closed at construction |
 | [0024](0024-retiring-the-assembly-markers.md) | Retiring the assembly markers |
+| [0025](0025-what-1x-promises.md) | What 1.x promises |
