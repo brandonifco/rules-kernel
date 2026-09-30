@@ -62,7 +62,7 @@ public readonly record struct SourceLocator
     /// <summary>
     /// Corpus identifiers are compared with ordinal, case-sensitive equality wherever they
     /// are compared at all -- by <c>SourceBaselineId</c>'s own equality, by the duplicate
-    /// check in <see cref="Identity.ReplayCompatibilityIdentity"/>, and by any consumer
+    /// check in <see cref="Identity.EngineIdentity"/>, and by any consumer
     /// matching a locator back to the baseline it cites.
     ///
     /// <para>

@@ -4,7 +4,7 @@ using RulesKernel.Identity;
 
 namespace RulesKernel.Tests.Identity;
 
-public sealed class ReplayCompatibilityIdentityTests
+public sealed class EngineIdentityTests
 {
     private const string HashA = "1111111111111111111111111111111111111111111111111111111111111111";
     private const string HashB = "2222222222222222222222222222222222222222222222222222222222222222";
@@ -14,7 +14,7 @@ public sealed class ReplayCompatibilityIdentityTests
     private static readonly SourceBaselineId CoreBook = new("core", HashA, "pdf-bytes");
     private static readonly SourceBaselineId Supplement = new("supplement", HashB, "pdf-bytes");
 
-    private static ReplayCompatibilityIdentity Identity(
+    private static EngineIdentity Identity(
         IEnumerable<SourceBaselineId>? baselines = null,
         RandomAlgorithmId? algorithm = null) =>
         new(Ruleset, Schema, baselines ?? [CoreBook], algorithm);
@@ -62,11 +62,11 @@ public sealed class ReplayCompatibilityIdentityTests
     public void Rejects_struct_defaults_that_bypass_their_constructors()
     {
         Assert.Throws<ArgumentException>(
-            () => new ReplayCompatibilityIdentity(default, Schema, [CoreBook]));
+            () => new EngineIdentity(default, Schema, [CoreBook]));
         Assert.Throws<ArgumentException>(
-            () => new ReplayCompatibilityIdentity(Ruleset, Schema, [default(SourceBaselineId)]));
+            () => new EngineIdentity(Ruleset, Schema, [default(SourceBaselineId)]));
         Assert.Throws<ArgumentException>(
-            () => new ReplayCompatibilityIdentity(Ruleset, Schema, [CoreBook], default(RandomAlgorithmId)));
+            () => new EngineIdentity(Ruleset, Schema, [CoreBook], default(RandomAlgorithmId)));
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ public sealed class ReplayCompatibilityIdentityTests
     public void Mutating_the_array_that_was_passed_in_cannot_change_the_identity()
     {
         var baselines = new[] { CoreBook };
-        var identity = new ReplayCompatibilityIdentity(Ruleset, Schema, baselines);
+        var identity = new EngineIdentity(Ruleset, Schema, baselines);
         int hashBefore = identity.GetHashCode();
 
         baselines[0] = Supplement;

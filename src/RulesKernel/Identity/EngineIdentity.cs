@@ -5,20 +5,21 @@ using System.Linq;
 namespace RulesKernel.Identity;
 
 /// <summary>
-/// The complete replay compatibility identity. The kernel's invariant is "same ruleset
-/// version + same corpus baselines + same initial state + same ordered decisions (+ the
-/// same random algorithm and state, where randomness is consumed) = the same outcomes and
-/// the same ordered history". This type makes the ruleset/corpus/replay portion of that
-/// explicitly comparable.
+/// What an engine declares it resolves against: the implemented ruleset revision, the shape
+/// of its recorded replays, the corpora it pins, and the generator it draws from, if any.
+/// Two identities are equal when every one of those declarations matches.
 ///
 /// <para>
-/// <b>Necessary, not sufficient.</b> The name promises more than the type holds. Equal
-/// identities mean two runs used the same declared ruleset revision, replay schema, pinned
-/// corpora and generator. They do not mean the runs had the same initial state or decisions,
-/// which the type never sees. They also do not mean the engine made the same assumptions
-/// about its corpora, such as the dates a snapshot is trusted to cover; those belong to
-/// <see cref="Ruleset"/>, and only an engine that bumps it honours that. The name is kept
-/// until the pre-1.0 surface review rather than changed twice (docs/decisions/0019).
+/// <b>Necessary, not sufficient, for replay.</b> The kernel's invariant is "same ruleset
+/// version + same corpus baselines + same initial state + same ordered decisions (+ the same
+/// random algorithm and state, where randomness is consumed) = the same outcomes and the same
+/// ordered history". This type makes the declared part of that comparable, and nothing else.
+/// Equal identities do not mean two runs had the same initial state or decisions, which the
+/// type never sees. They also do not mean the engine made the same assumptions about its
+/// corpora, such as the dates a snapshot is trusted to cover; those belong to
+/// <see cref="Ruleset"/>, and only an engine that bumps it honours that. And they are
+/// declarations: an engine that changes its behaviour without bumping its revision still
+/// compares equal to its earlier self (docs/decisions/0019, docs/decisions/0022).
 /// </para>
 ///
 /// <para>
@@ -54,10 +55,10 @@ namespace RulesKernel.Identity;
 ///
 /// <para>
 /// This type has no serialization, persistence, or replay-execution behaviour by design.
-/// It exists only to represent and compare compatibility identity.
+/// It exists only to represent and compare what an engine declares.
 /// </para>
 /// </summary>
-public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibilityIdentity>
+public sealed class EngineIdentity : IEquatable<EngineIdentity>
 {
     // Never exposed. SourceBaselines hands out a copy, so nothing a caller does to what it
     // receives can reach the entries equality and the hash code are computed from.
@@ -104,7 +105,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// present but is the struct default.
     /// </exception>
     /// <exception cref="ArgumentNullException"><paramref name="sourceBaselines"/> is null.</exception>
-    public ReplayCompatibilityIdentity(
+    public EngineIdentity(
         RulesetVersion ruleset,
         ReplaySchemaVersion replaySchema,
         IEnumerable<SourceBaselineId> sourceBaselines,
@@ -174,7 +175,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     public bool IsDeterministicWithoutRandomness => RandomAlgorithm is null;
 
     /// <inheritdoc/>
-    public bool Equals(ReplayCompatibilityIdentity? other)
+    public bool Equals(EngineIdentity? other)
     {
         if (other is null)
         {
@@ -193,7 +194,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     }
 
     /// <inheritdoc/>
-    public override bool Equals(object? obj) => Equals(obj as ReplayCompatibilityIdentity);
+    public override bool Equals(object? obj) => Equals(obj as EngineIdentity);
 
     /// <summary>
     /// A hash code for hashed-collection semantics, and nothing else. It is <b>never</b> a
@@ -202,7 +203,7 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// <para>
     /// <see cref="HashCode"/> is the correct tool for the job this member actually has --
     /// bucketing an identity in a dictionary for the lifetime of one process -- and it is
-    /// deliberately the wrong tool for the job the surrounding type's name invites. .NET
+    /// deliberately the wrong tool for the job an identity type invites. .NET
     /// randomises string hashing per process and <see cref="HashCode"/> carries no guarantee
     /// across releases, so a value derived from here is reproducible all afternoon and
     /// different tomorrow: the failure mode that passes every test written on the day and
@@ -210,10 +211,10 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
     /// </para>
     ///
     /// <para>
-    /// The comparison that means something is <see cref="Equals(ReplayCompatibilityIdentity?)"/>,
-    /// which compares every component. To *store* an identity, store the components. The type
-    /// whose whole purpose is replay identity should say which of its members is not one, so
-    /// it is said here rather than left to be inferred.
+    /// The comparison that means something is <see cref="Equals(EngineIdentity?)"/>,
+    /// which compares every component. To *store* an identity, store the components. A type
+    /// whose whole purpose is being compared as an identity should say which of its members is
+    /// not one, so it is said here rather than left to be inferred.
     /// </para>
     /// </summary>
     public override int GetHashCode()
@@ -230,11 +231,11 @@ public sealed class ReplayCompatibilityIdentity : IEquatable<ReplayCompatibility
         return hash.ToHashCode();
     }
 
-    /// <summary>Equality by value; see <see cref="Equals(ReplayCompatibilityIdentity?)"/>.</summary>
-    public static bool operator ==(ReplayCompatibilityIdentity? left, ReplayCompatibilityIdentity? right) =>
+    /// <summary>Equality by value; see <see cref="Equals(EngineIdentity?)"/>.</summary>
+    public static bool operator ==(EngineIdentity? left, EngineIdentity? right) =>
         left is null ? right is null : left.Equals(right);
 
     /// <summary>Inequality by value.</summary>
-    public static bool operator !=(ReplayCompatibilityIdentity? left, ReplayCompatibilityIdentity? right) =>
+    public static bool operator !=(EngineIdentity? left, EngineIdentity? right) =>
         !(left == right);
 }

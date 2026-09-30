@@ -58,7 +58,7 @@ public sealed class KernelPressureTests
         var earlier = new SourceBaselineId(
             Corpus.RegulationId, new string('e', 64), Corpus.RegulationDerivation, new DateOnly(2021, 1, 1));
 
-        Assert.Throws<ArgumentException>(() => new ReplayCompatibilityIdentity(
+        Assert.Throws<ArgumentException>(() => new EngineIdentity(
             new RulesetVersion("part107-probe", 1), new ReplaySchemaVersion(1), [earlier, Corpus.Regulation]));
     }
 
@@ -81,9 +81,9 @@ public sealed class KernelPressureTests
     {
         // The engine applies the regulation before its own interpretation because the
         // interpretation reads the regulation, not because of where either sits in the list.
-        var declared = new ReplayCompatibilityIdentity(
+        var declared = new EngineIdentity(
             new RulesetVersion("part107-probe", 1), new ReplaySchemaVersion(1), [Corpus.Regulation, Corpus.Interpretations]);
-        var reversed = new ReplayCompatibilityIdentity(
+        var reversed = new EngineIdentity(
             new RulesetVersion("part107-probe", 1), new ReplaySchemaVersion(1), [Corpus.Interpretations, Corpus.Regulation]);
 
         Assert.Equal(new Part107Engine(true).Identity, declared);

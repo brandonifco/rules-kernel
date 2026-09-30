@@ -90,7 +90,7 @@ public sealed class Part107Engine
     public Part107Engine(bool adoptsRecordedInterpretations)
     {
         AdoptsRecordedInterpretations = adoptsRecordedInterpretations;
-        Identity = new ReplayCompatibilityIdentity(
+        Identity = new EngineIdentity(
             new RulesetVersion("part107-probe", 1),
             new ReplaySchemaVersion(1),
             adoptsRecordedInterpretations
@@ -105,7 +105,7 @@ public sealed class Part107Engine
     /// </summary>
     public bool AdoptsRecordedInterpretations { get; }
 
-    public ReplayCompatibilityIdentity Identity { get; }
+    public EngineIdentity Identity { get; }
 
     private static readonly SourceLocator CalendarMonthInterpretation =
         new(Corpus.InterpretationsId, "decision 0001: a calendar month in § 107.65 is counted whole, through its last day");

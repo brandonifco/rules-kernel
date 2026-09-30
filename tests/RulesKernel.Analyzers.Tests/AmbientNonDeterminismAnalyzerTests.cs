@@ -311,7 +311,7 @@ public sealed class AmbientNonDeterminismAnalyzerTests
     }
 
     // RK0005 is the one rule whose subject has a legitimate home. The assertions below are
-    // what stop it from being a rule nobody can keep: ReplayCompatibilityIdentity in this
+    // what stop it from being a rule nobody can keep: EngineIdentity in this
     // repository's own kernel writes exactly the first shape, and docs/decisions/0011 records
     // that a false positive costs a consumer more than a false negative, because they cannot
     // fix it -- only suppress it or drop the package.
@@ -319,7 +319,7 @@ public sealed class AmbientNonDeterminismAnalyzerTests
     [Fact]
     public void HashCode_inside_a_GetHashCode_override_reports_nothing()
     {
-        // This is ReplayCompatibilityIdentity.GetHashCode, near enough to copy. It is
+        // This is EngineIdentity.GetHashCode, near enough to copy. It is
         // correct .NET: a hashed collection wants a per-process bucket, not a fingerprint.
         var idiomatic = """
             public sealed class Identity

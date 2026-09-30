@@ -18,7 +18,7 @@ public sealed class ProbeTests
     private const string AdjustHash2019 = "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2";
     private const string AdjustHash2024 = "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3";
 
-    private static ReplayCompatibilityIdentity IdentityAsOf(DateOnly asOf, string adjustmentHash) =>
+    private static EngineIdentity IdentityAsOf(DateOnly asOf, string adjustmentHash) =>
         new(
             ruleset: new RulesetVersion("deferral-limit", 1),
             replaySchema: new ReplaySchemaVersion(1),
@@ -118,7 +118,7 @@ public sealed class ProbeTests
     public void Dropping_a_corpus_is_an_incompatibility()
     {
         var both = IdentityAsOf(new DateOnly(2019, 3, 14), AdjustHash2019);
-        var statuteOnly = new ReplayCompatibilityIdentity(
+        var statuteOnly = new EngineIdentity(
             new RulesetVersion("deferral-limit", 1),
             new ReplaySchemaVersion(1),
             [new SourceBaselineId(DeferralLimitEngine.StatuteCorpus, StatuteHash, "ecfr-xml", new DateOnly(2019, 3, 14))]);

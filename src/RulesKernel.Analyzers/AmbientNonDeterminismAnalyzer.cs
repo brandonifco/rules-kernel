@@ -383,7 +383,7 @@ public sealed class AmbientNonDeterminismAnalyzer : DiagnosticAnalyzer
 
             // RK0005 is the one rule with a legitimate home, and that home is why it is a
             // rule about *where* a hash is used rather than a ban on an API.
-            // ReplayCompatibilityIdentity.GetHashCode in this repository's own kernel builds
+            // EngineIdentity.GetHashCode in this repository's own kernel builds
             // its hash with System.HashCode, correctly: a hashed collection wants a
             // per-process bucket, not a fingerprint. Reporting there would be a false
             // positive in the single most idiomatic shape in .NET, and docs/decisions/0011
