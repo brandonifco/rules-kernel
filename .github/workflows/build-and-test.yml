@@ -19,10 +19,12 @@ permissions:
 
 jobs:
   build-and-test:
-    # A fixed release, not the ubuntu-latest alias: that alias has jumped Ubuntu releases
-    # before, and each jump silently changes the toolchain underneath a build whose central
-    # claim is reproducibility.
-    runs-on: ubuntu-24.04
+    # The hosted default is a fixed release, not the ubuntu-latest alias: that alias has jumped
+    # Ubuntu releases before, and each jump silently changes the toolchain underneath a build
+    # whose central claim is reproducibility. The owner's own runs go to the factory-ci VM
+    # instead (rules-factory's execution-trust decision, 0080); forks and bots keep the hosted
+    # default.
+    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -50,18 +52,22 @@ jobs:
         run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"
 
       # Two versions, for two different reasons. The pinned one is what global.json
-      # requires and what everything is built with. The 8.0.x install is there purely for
-      # its RUNTIME: tools/package-probe/check.sh executes a real net8.0 consumer against
+      # requires and what everything is built with. The 8.0.131 install is there purely for
+      # its RUNTIME (8.0.31): tools/package-probe/check.sh executes a real net8.0 consumer against
       # the packed packages, and with no .NET 8 runtime on the box it would honestly report
       # `skip` for that framework and prove nothing -- on the exact half of the
       # docs/decisions/0008 commitment that was broken in 0.1.0 and is the reason the probe
       # exists. global.json pins 10.0.112 with rollForward disabled, so the extra SDK
       # cannot change which one builds this repository.
+      # The version is exact, not a floating 8.0.x: an exact version is reproducible, and the
+      # factory-ci VM's toolchain is read-only, so it cannot follow 8.0.x (today 8.0.425; the
+      # next patch would make the job try to install into a read-only directory). 8.0.131
+      # carries the same 8.0.31 runtime the probe needs.
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: |
-            8.0.x
+            8.0.131
             ${{ steps.sdk.outputs.version }}
 
       - name: Validate
